@@ -1,0 +1,252 @@
+@page "/mealdbrecipe/{MealId}"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Components.Authorization
+@using recipe_suggestions.Data
+@using recipe_suggestions.Models
+@using Microsoft.JSInterop
+@using recipe_suggestions.Services
+@inject MealDbService MealDb
+@inject ApplicationDbContext Db
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthStateProvider
+@inject PantryService Pantry
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<PageTitle>Recipe Details</PageTitle>
+
+<div class="wireframe-page compact-page detail-screen">
+
+@if (isLoading)
+{
+    <section class="wireframe-section empty-state">
+        <div class="empty-art"><i class="bi bi-hourglass-split" aria-hidden="true"></i></div>
+        <h1>Loading recipe...</h1>
+        <p>Getting full recipe details from TheMealDB.</p>
+    </section>
+}
+else if (meal == null)
+{
+    <section class="wireframe-section empty-state">
+        <div class="empty-art"><i class="bi bi-exclamation-circle" aria-hidden="true"></i></div>
+        <h1>Recipe could not load</h1>
+        <p>
+            @(mealDbFailed
+                ? "TheMealDB could not be reached. Check your internet connection and try again."
+                : "This recipe was not found in TheMealDB.")
+        </p>
+        <a class="wire-btn primary" href="/ingredients">Back to Pantry</a>
+    </section>
+}
+else
+{
+    <a class="back-link" href="/recipes">← Back to Results</a>
+
+    <section class="recipe-detail-layout">
+        <div class="recipe-detail-left">
+            <div class="recipe-detail-image-box">
+                <img src="@meal.StrMealThumb" alt="Photo of @meal.StrMeal" />
+            </div>
+
+            <div class="instructions-block">
+                <h2>Instructions</h2>
+                <ol class="instruction-steps">
+                    @foreach (var step in meal.GetInstructionSteps())
+                    {
+                        <li>@step</li>
+                    }
+                </ol>
+            </div>
+        </div>
+
+        <div class="recipe-detail-info">
+            <p class="app-label">Recipe Details</p>
+            <h1>@meal.StrMeal</h1>
+
+            <div class="recipe-meta-row">
+                @if (!string.IsNullOrWhiteSpace(meal.StrCategory))
+                {
+                    <span>@meal.StrCategory</span>
+                }
+                @if (!string.IsNullOrWhiteSpace(meal.StrArea))
+                {
+                    <span>@meal.StrArea</span>
+                }
+            </div>
+
+            @if (matchStats != null)
+            {
+                <div class="match-stats-row">
+                    <span class="match-stat have">
+                        <i class="bi bi-check-circle"></i>
+                        You have <strong>@matchStats.HaveFromPantry</strong> of <strong>@matchStats.TotalIngredients</strong>
+                    </span>
+                    @if (matchStats.BuyCount > 0)
+                    {
+                        <span class="match-stat buy">
+                            <i class="bi bi-cart"></i> <strong>@matchStats.BuyCount</strong> to buy
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="match-stat ready"><i class="bi bi-star-fill"></i> Ready to cook</span>
+                    }
+                </div>
+            }
+
+            <div class="ingredient-tag-row" aria-label="Recipe ingredients">
+                @foreach (var (ingredient, measure) in meal.GetIngredientsWithMeasures())
+                {
+                    var hasIt = pantryNames.Any(p => IngredientMatcher.Matches(p, ingredient));
+                    <span class="ingredient-tag @(hasIt ? "have" : "need")">
+                        @if (hasIt) { <i class="bi bi-check"></i> }
+                        @ingredient@(string.IsNullOrWhiteSpace(measure) ? "" : $" ({measure})")
+                    </span>
+                }
+            </div>
+
+            <div class="detail-actions">
+                @if (!isLoggedIn)
+                {
+                    <a class="wire-btn primary" href="@GetLoginUrl()">Login to Save</a>
+                }
+                else
+                {
+                    @if (savedRecipe == null)
+                    {
+                        <button class="wire-btn primary" @onclick="SaveMealDbRecipe">
+                            <i class="bi bi-bookmark" aria-hidden="true"></i> Save Recipe
+                        </button>
+                    }
+                    else
+                    {
+                        <span class="saved-label wire-btn secondary" style="pointer-events:none;">
+                            <i class="bi bi-check-circle" aria-hidden="true"></i> Saved
+                        </span>
+                    }
+
+                    <button class="wire-btn secondary"
+                            disabled="@(savedRecipe == null)"
+                            aria-pressed="@(savedRecipe?.IsFavorite == true)"
+                            @onclick="ToggleFavorite">
+                        <i class="bi @(savedRecipe?.IsFavorite == true ? "bi-heart-fill" : "bi-heart")" aria-hidden="true"></i>
+                        @(savedRecipe?.IsFavorite == true ? "Favorited" : "Favorite")
+                    </button>
+                }
+
+                <a class="wire-btn secondary" href="/ingredients">Choose More</a>
+            </div>
+        </div>
+    </section>
+}
+
+</div>
+
+@code {
+    [Parameter]
+    public string MealId { get; set; } = "";
+
+    private MealDbMealDetail? meal;
+    private SavedRecipe? savedRecipe;
+    private RecipeMatchStats? matchStats;
+    private List<string> pantryNames = new();
+    private bool isLoading = true;
+    private bool isLoggedIn;
+    private bool mealDbFailed = false;
+    private string? userId;
+    private bool guestPantryLoaded;
+
+    protected override async Task OnInitializedAsync()
+    {
+        MealDb.ResetRequestFailure();
+        meal = await MealDb.GetMealDetailsAsync(MealId);
+        mealDbFailed = MealDb.LastRequestFailed;
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        isLoggedIn = user.Identity?.IsAuthenticated == true;
+
+        if (isLoggedIn)
+        {
+            var appUser = await UserManager.GetUserAsync(user);
+            userId = appUser?.Id;
+            LoadSavedRecipe();
+
+            if (userId != null && meal != null)
+            {
+                var pantry = await Pantry.GetPantryIngredientsAsync(userId);
+                pantryNames = pantry.Select(i => i.Name).ToList();
+                matchStats = RecipeMatchAnalyzer.Analyze(meal, pantryNames, pantryNames);
+            }
+        }
+
+        isLoading = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || guestPantryLoaded)
+            return;
+
+        guestPantryLoaded = true;
+
+        // Guests: compute have/buy against the pantry stored on this device.
+        if (!isLoggedIn && meal != null)
+        {
+            var localIds = await LocalPantryStore.GetAsync(JS);
+            if (localIds.Count > 0)
+            {
+                pantryNames = Db.Ingredients
+                    .Where(i => localIds.Contains(i.Id))
+                    .Select(i => i.Name)
+                    .ToList();
+                matchStats = RecipeMatchAnalyzer.Analyze(meal, pantryNames, pantryNames);
+                StateHasChanged();
+            }
+        }
+    }
+
+    private void LoadSavedRecipe()
+    {
+        if (userId == null)
+            return;
+
+        savedRecipe = Db.SavedRecipes
+            .FirstOrDefault(s => s.UserId == userId && s.MealDbId == MealId);
+    }
+
+    private void SaveMealDbRecipe()
+    {
+        if (userId == null || meal == null)
+            return;
+
+        Db.SavedRecipes.Add(new SavedRecipe
+        {
+            UserId = userId,
+            MealDbId = meal.IdMeal,
+            MealDbName = meal.StrMeal,
+            MealDbImageUrl = meal.StrMealThumb,
+            IsFavorite = false
+        });
+
+        Db.SaveChanges();
+        LoadSavedRecipe();
+    }
+
+    private void ToggleFavorite()
+    {
+        if (savedRecipe == null)
+            return;
+
+        savedRecipe.IsFavorite = !savedRecipe.IsFavorite;
+        Db.SaveChanges();
+    }
+
+    private string GetLoginUrl()
+    {
+        var returnUrl = Uri.EscapeDataString(Nav.Uri);
+        return $"/Account/Login?ReturnUrl={returnUrl}";
+    }
+}

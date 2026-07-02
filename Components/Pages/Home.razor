@@ -3,18 +3,52 @@
 
 <PageTitle>ScrapeThePantry</PageTitle>
 
-<h1>ScrapeThePantry</h1>
+<div class="wireframe-page home-screen">
 
-<p>Find recipes using ingredients you already have.</p>
+    <section class="wireframe-hero">
+        <div class="hero-copy">
+            <h1>Welcome to<br />ScrapeThePantry</h1>
+            <p class="hero-description">
+                Stock your pantry, find recipes you can make now, and see what to buy.
+            </p>
 
-<div class="mt-4">
+            <div class="button-row">
+                <a class="wire-btn primary" href="/ingredients">Manage Pantry</a>
+                <a class="wire-btn secondary" href="/savedrecipes">View Saved Recipes</a>
+            </div>
+        </div>
 
-    <a class="btn btn-primary me-3" href="/ingredients">
-        Find Recipes
-    </a>
+        <div class="hero-illustration" aria-label="Bowl of fresh pantry vegetables">
+            <div class="bowl">
+                <span class="veg tomato"></span>
+                <span class="veg carrot"></span>
+                <span class="veg leaf-one"></span>
+                <span class="veg leaf-two"></span>
+                <span class="veg herb"></span>
+            </div>
+        </div>
+    </section>
 
-    <a class="btn btn-outline-secondary" href="/savedrecipes">
-        Saved Recipes
-    </a>
+    <section class="feature-strip">
+        <div class="wire-card-grid">
+            <a class="wire-card" href="/ingredients">
+                <div class="feature-icon"><i class="bi bi-search" aria-hidden="true"></i></div>
+                <h3>Find Recipes</h3>
+                <p>Search TheMealDB using your ingredients</p>
+            </a>
+
+            <a class="wire-card" href="/savedrecipes">
+                <div class="feature-icon"><i class="bi bi-heart" aria-hidden="true"></i></div>
+                <h3>Save Favorites</h3>
+                <p>Save and favorite your top recipes</p>
+            </a>
+
+            <a class="wire-card" href="/profile">
+                <div class="feature-icon"><i class="bi bi-person" aria-hidden="true"></i></div>
+                <h3>Your Profile</h3>
+                <p>View your activity and account info</p>
+            </a>
+        </div>
+    </section>
 
 </div>

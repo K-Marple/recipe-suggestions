@@ -1,23 +1,50 @@
 ﻿@inherits LayoutComponentBase
+@using System.Security.Claims
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+<a href="#main-content" class="skip-link">Skip to content</a>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
+<div class="app-shell">
+    <input type="checkbox" id="sidebar-toggle" class="sidebar-toggle" aria-hidden="true" />
+    <label for="sidebar-toggle" class="sidebar-toggle-btn" aria-label="Toggle navigation menu">
+        <i class="bi bi-list" aria-hidden="true"></i>
+    </label>
 
-        <article class="content px-4">
+    <NavMenu />
+
+    <main class="app-main">
+        <header class="app-topbar">
+            <AuthorizeView>
+                <Authorized Context="authContext">
+                    <span class="topbar-welcome">Welcome, @GetDisplayName(authContext.User)</span>
+                    <span class="avatar-dot" aria-hidden="true">@GetInitial(authContext.User)</span>
+                </Authorized>
+                <NotAuthorized>
+                    <span class="topbar-welcome">Welcome, Guest</span>
+                    <span class="avatar-dot" aria-hidden="true">G</span>
+                </NotAuthorized>
+            </AuthorizeView>
+        </header>
+
+        <article id="main-content" class="page-content" tabindex="-1">
             @Body
         </article>
     </main>
 </div>
 
-<div id="blazor-error-ui">
-    An unhandled error has occurred.
-    <a href="" class="reload">Reload</a>
-    <a class="dismiss">🗙</a>
-</div>
+@code {
+    private static string GetDisplayName(ClaimsPrincipal user)
+    {
+        var email = user.FindFirst(ClaimTypes.Email)?.Value
+            ?? user.Identity?.Name
+            ?? "User";
+
+        var atIndex = email.IndexOf('@');
+        return atIndex > 0 ? email[..atIndex] : email;
+    }
+
+    private static string GetInitial(ClaimsPrincipal user)
+    {
+        var name = GetDisplayName(user);
+        return string.IsNullOrEmpty(name) ? "U" : char.ToUpperInvariant(name[0]).ToString();
+    }
+}

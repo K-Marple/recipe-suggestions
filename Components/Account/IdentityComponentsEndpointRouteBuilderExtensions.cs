@@ -100,7 +100,7 @@ internal static class IdentityComponentsEndpointRouteBuilderExtensions
                 personalData.Add($"{l.LoginProvider} external login provider key", l.ProviderKey);
             }
 
-            personalData.Add("Authenticator Key", (await userManager.GetAuthenticatorKeyAsync(user))!);
+            personalData.Add("Authenticator Key", await userManager.GetAuthenticatorKeyAsync(user) ?? "null");
             var fileBytes = JsonSerializer.SerializeToUtf8Bytes(personalData);
 
             context.Response.Headers.TryAdd("Content-Disposition", "attachment; filename=PersonalData.json");

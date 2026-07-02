@@ -186,12 +186,12 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xJbmdyZWRpZW50cy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/25ave/OneDrive/Desktop/BYU-IDAHO/2026_SPRING/CSE 325/recipe-suggestions/Components/Pages/Profile.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xQcm9maWxlLnJhem9y
+[C:/Users/25ave/OneDrive/Desktop/BYU-IDAHO/2026_SPRING/CSE 325/recipe-suggestions/Components/Pages/MealDbRecipeDetails.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xNZWFsRGJSZWNpcGVEZXRhaWxzLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/25ave/OneDrive/Desktop/BYU-IDAHO/2026_SPRING/CSE 325/recipe-suggestions/Components/Pages/RecipeDetails.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xSZWNpcGVEZXRhaWxzLnJhem9y
+[C:/Users/25ave/OneDrive/Desktop/BYU-IDAHO/2026_SPRING/CSE 325/recipe-suggestions/Components/Pages/Profile.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xQcm9maWxlLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Users/25ave/OneDrive/Desktop/BYU-IDAHO/2026_SPRING/CSE 325/recipe-suggestions/Components/Pages/Recipes.razor]

@@ -7,4 +7,6 @@ public class Ingredient
     public string Category { get; set; } = "Other";
     public bool IsDefault { get; set; } = true;
     public string? CreatedByUserId { get; set; }
+
+    public List<PantryItem> PantryItems { get; set; } = new();
 }

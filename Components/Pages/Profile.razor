@@ -1,62 +1,80 @@
-@page "/savedrecipes"
+@page "/profile"
 @rendermode InteractiveServer
-@using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.Components.Authorization
 @using recipe_suggestions.Data
-@using recipe_suggestions.Models
-
+@using recipe_suggestions.Services
 @inject ApplicationDbContext Db
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthStateProvider
+@inject PantryService Pantry
 
-<PageTitle>Saved Recipes</PageTitle>
+<PageTitle>Profile</PageTitle>
 
-<h1>Saved Recipes</h1>
+<div class="wireframe-page compact-page profile-screen">
 
-@if (!isLoggedIn)
-{
-    <div class="alert alert-info">Login to save recipes.</div>
-    <a class="btn btn-primary" href="/Account/Login">Login</a>
-}
-else if (savedRecipes.Count == 0)
-{
-    <div class="alert alert-warning">You haven't saved any recipes yet.</div>
-    <a class="btn btn-primary" href="/ingredients">Find Recipes</a>
-}
-else
-{
-    @foreach (var saved in savedRecipes)
+    <section class="page-heading">
+        <h1>Profile</h1>
+        <p>Manage your account and view your activity.</p>
+    </section>
+
+    @if (!isLoggedIn)
     {
-        <div class="card mb-3 shadow-sm">
-            <div class="card-body">
-                <h4>
-                    @(saved.IsFavorite ? "★ " : "")
-                    @saved.Recipe!.Name
-                </h4>
-
-                <p>@saved.Recipe.Description</p>
-
-                <button class="btn @(saved.IsFavorite ? "btn-warning" : "btn-outline-warning")"
-                        @onclick="() => ToggleFavorite(saved)">
-                    @(saved.IsFavorite ? "Favorited" : "Mark Favorite")
-                </button>
-
-                <a class="btn btn-dark ms-2" href="/recipe/@saved.RecipeId">View</a>
-
-                <button class="btn btn-danger ms-2"
-                        @onclick="() => DeleteRecipe(saved)">
-                    Remove
-                </button>
-            </div>
-        </div>
+        <section class="wireframe-section empty-state">
+            <div class="empty-art"><i class="bi bi-person-lock" aria-hidden="true"></i></div>
+            <h2>Login required</h2>
+            <p>Login to view your profile.</p>
+            <a class="wire-btn primary" href="/Account/Login">Login</a>
+        </section>
     }
-}
+    else
+    {
+        <section class="profile-grid">
+            <div class="profile-card">
+                <h2>Account Information</h2>
+                <p class="profile-label">Email</p>
+                <p>@email</p>
+
+                <div class="button-row">
+                    <a class="wire-btn secondary" href="/Account/Manage">Manage Account</a>
+                </div>
+            </div>
+
+            <div class="profile-card">
+                <h2>Your Stats</h2>
+                <div class="stats-grid">
+                    <a class="stat-card" href="/savedrecipes">
+                        <span class="stat-icon-wrap"><i class="bi bi-journal-bookmark" aria-hidden="true"></i></span>
+                        <strong>@savedCount</strong>
+                        <p>Saved Recipes</p>
+                    </a>
+
+                    <a class="stat-card" href="/savedrecipes?tab=favorites">
+                        <span class="stat-icon-wrap heart"><i class="bi bi-heart-fill" aria-hidden="true"></i></span>
+                        <strong>@favoriteCount</strong>
+                        <p>Favorites</p>
+                    </a>
+
+                    <a class="stat-card" href="/ingredients">
+                        <span class="stat-icon-wrap custom"><i class="bi bi-basket" aria-hidden="true"></i></span>
+                        <strong>@pantryCount</strong>
+                        <p>Pantry Items</p>
+                    </a>
+                </div>
+            </div>
+        </section>
+    }
+
+</div>
 
 @code {
-    private List<SavedRecipe> savedRecipes = new();
     private bool isLoggedIn;
+    private string email = "";
     private string? userId;
+
+    private int savedCount;
+    private int favoriteCount;
+    private int pantryCount;
 
     protected override async Task OnInitializedAsync()
     {
@@ -69,32 +87,20 @@ else
             return;
 
         var appUser = await UserManager.GetUserAsync(user);
+
         userId = appUser?.Id;
+        email = appUser?.Email ?? "";
 
-        LoadRecipes();
+        await LoadStats();
     }
 
-    private void LoadRecipes()
+    private async Task LoadStats()
     {
-        savedRecipes = Db.SavedRecipes
-            .Include(r => r.Recipe)
-            .Where(r => r.UserId == userId)
-            .OrderByDescending(r => r.IsFavorite)
-            .ThenByDescending(r => r.SavedAt)
-            .ToList();
-    }
+        if (userId == null)
+            return;
 
-    private void ToggleFavorite(SavedRecipe recipe)
-    {
-        recipe.IsFavorite = !recipe.IsFavorite;
-        Db.SaveChanges();
-        LoadRecipes();
-    }
-
-    private void DeleteRecipe(SavedRecipe recipe)
-    {
-        Db.SavedRecipes.Remove(recipe);
-        Db.SaveChanges();
-        LoadRecipes();
+        savedCount = Db.SavedRecipes.Count(r => r.UserId == userId);
+        favoriteCount = Db.SavedRecipes.Count(r => r.UserId == userId && r.IsFavorite);
+        pantryCount = await Pantry.GetPantryCountAsync(userId);
     }
 }

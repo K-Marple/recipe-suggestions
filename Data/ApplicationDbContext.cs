@@ -14,4 +14,27 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<RecipeIngredient> RecipeIngredients => Set<RecipeIngredient>();
 
     public DbSet<SavedRecipe> SavedRecipes => Set<SavedRecipe>();
+
+    public DbSet<PantryItem> PantryItems => Set<PantryItem>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<PantryItem>(entity =>
+        {
+            entity.HasIndex(p => new { p.UserId, p.IngredientId }).IsUnique();
+            entity.HasIndex(p => p.UserId);
+
+            entity.HasOne(p => p.Ingredient)
+                .WithMany(i => i.PantryItems)
+                .HasForeignKey(p => p.IngredientId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Ingredient>(entity =>
+        {
+            entity.HasIndex(i => i.Name);
+        });
+    }
 }

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using recipe_suggestions.Data;
 
@@ -10,9 +11,11 @@ using recipe_suggestions.Data;
 namespace recipe_suggestions.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260702021730_AddMealDbSavedRecipes")]
+    partial class AddMealDbSavedRecipes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.15");
@@ -231,37 +234,7 @@ namespace recipe_suggestions.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Name");
-
                     b.ToTable("Ingredients");
-                });
-
-            modelBuilder.Entity("recipe_suggestions.Models.PantryItem", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("AddedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("IngredientId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IngredientId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("UserId", "IngredientId")
-                        .IsUnique();
-
-                    b.ToTable("PantryItems");
                 });
 
             modelBuilder.Entity("recipe_suggestions.Models.Recipe", b =>
@@ -328,16 +301,7 @@ namespace recipe_suggestions.Migrations
                     b.Property<bool>("IsFavorite")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("MealDbId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("MealDbImageUrl")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("MealDbName")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("RecipeId")
+                    b.Property<int>("RecipeId")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("SavedAt")
@@ -405,17 +369,6 @@ namespace recipe_suggestions.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("recipe_suggestions.Models.PantryItem", b =>
-                {
-                    b.HasOne("recipe_suggestions.Models.Ingredient", "Ingredient")
-                        .WithMany("PantryItems")
-                        .HasForeignKey("IngredientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Ingredient");
-                });
-
             modelBuilder.Entity("recipe_suggestions.Models.RecipeIngredient", b =>
                 {
                     b.HasOne("recipe_suggestions.Models.Ingredient", "Ingredient")
@@ -439,14 +392,11 @@ namespace recipe_suggestions.Migrations
                 {
                     b.HasOne("recipe_suggestions.Models.Recipe", "Recipe")
                         .WithMany()
-                        .HasForeignKey("RecipeId");
+                        .HasForeignKey("RecipeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Recipe");
-                });
-
-            modelBuilder.Entity("recipe_suggestions.Models.Ingredient", b =>
-                {
-                    b.Navigation("PantryItems");
                 });
 
             modelBuilder.Entity("recipe_suggestions.Models.Recipe", b =>

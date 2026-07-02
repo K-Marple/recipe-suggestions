@@ -1,204 +1,514 @@
 @page "/ingredients"
 @rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.JSInterop
 @using recipe_suggestions.Data
 @using recipe_suggestions.Models
+@using recipe_suggestions.Services
 @inject ApplicationDbContext Db
 @inject NavigationManager Nav
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthStateProvider
+@inject PantryService Pantry
+@inject IngredientCatalogService Catalog
+@inject IJSRuntime JS
 
-<PageTitle>Ingredients</PageTitle>
+<PageTitle>My Pantry</PageTitle>
 
-<h1>My Ingredients</h1>
+<div class="wireframe-page compact-page ingredients-screen pantry-screen">
 
-<p>Select ingredients you already have. You can choose up to 15.</p>
+    <section class="page-heading pantry-header">
+        <div>
+            <h1>My Pantry</h1>
+            <p>Stock your pantry once, then pick what to cook with today.</p>
+        </div>
+        <div class="button-row">
+            @if (isLoggedIn)
+            {
+                <button class="wire-btn secondary" @onclick="OpenAddModal">+ Custom Item</button>
+            }
+        </div>
+    </section>
 
-<div class="mb-3">
-    <input class="form-control"
-           placeholder="Search ingredients..."
-           @bind="searchText"
-           @bind:event="oninput" />
-</div>
-
-<div class="mb-3">
-    <input class="form-control"
-           placeholder="Add custom ingredient..."
-           @bind="newIngredient" />
-
-    <button class="btn btn-primary mt-2" @onclick="AddIngredient">
-        Add Ingredient
-    </button>
-</div>
-
-<p><strong>@selectedIds.Count</strong> ingredients selected</p>
-
-@if (showMaxWarning)
-{
-    <div class="alert alert-warning">
-        Maximum reached. You can select up to 15 ingredients.
-    </div>
-}
-
-@if (!FilteredIngredients.Any())
-{
-    <div class="alert alert-info">
-        No ingredients found. Add it as a custom ingredient above.
-    </div>
-}
-else
-{
-    <div class="row">
-        @foreach (var ingredient in FilteredIngredients)
-        {
-            <div class="col-md-3 col-sm-6 mb-3">
-                <button class="btn w-100 @(selectedIds.Contains(ingredient.Id) ? "btn-success" : "btn-outline-secondary")"
-                        @onclick="() => ToggleIngredient(ingredient.Id)">
-                    @ingredient.Name
-                </button>
-
-                @if (!ingredient.IsDefault)
-                {
-                    <input class="form-control form-control-sm mt-1"
-                           value="@ingredient.Name"
-                           @onchange="e => UpdateIngredient(ingredient.Id, e.Value?.ToString())" />
-
-                    <button class="btn btn-sm btn-danger w-100 mt-1"
-                            @onclick="() => DeleteIngredient(ingredient.Id)">
-                        Delete Custom
-                    </button>
-                }
-            </div>
-        }
-    </div>
-}
-
-<button class="btn btn-dark"
-        disabled="@(selectedIds.Count == 0)"
-        @onclick="FindRecipes">
-    Find Recipes
-</button>
-
-@code {
-    private List<Ingredient> ingredients = new();
-    private HashSet<int> selectedIds = new();
-
-    private string newIngredient = "";
-    private string searchText = "";
-
-    private bool showMaxWarning = false;
-
-    private IEnumerable<Ingredient> FilteredIngredients =>
-        string.IsNullOrWhiteSpace(searchText)
-            ? ingredients
-            : ingredients.Where(i =>
-                i.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase));
-
-    protected override void OnInitialized()
+    @if (!isLoggedIn)
     {
-        SeedIngredients();
-        LoadIngredients();
+        <div class="guest-banner" role="note">
+            <i class="bi bi-info-circle" aria-hidden="true"></i>
+            <span>You're browsing as a guest. Your pantry is saved on this device. <a href="/Account/Login?ReturnUrl=%2Fingredients">Log in</a> to save it to your account.</span>
+        </div>
     }
 
-    private void LoadIngredients()
+    <div class="pantry-mode-tabs" role="tablist" aria-label="Pantry views">
+        <button type="button" class="tab-pill @(viewMode == PantryView.Pantry ? "active" : "")" role="tab" @onclick="() => SetView(PantryView.Pantry)">
+            My Pantry (@pantryIngredients.Count)
+        </button>
+        <button type="button" class="tab-pill @(viewMode == PantryView.Catalog ? "active" : "")" role="tab" @onclick="() => SetView(PantryView.Catalog)">
+            Browse Catalog
+        </button>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(statusMessage))
     {
-        ingredients = Db.Ingredients
+        <div class="alert @(isStatusError ? "alert-danger" : "alert-info")" role="alert" aria-live="polite">@statusMessage</div>
+    }
+
+    @if (viewMode == PantryView.Pantry)
+    {
+        @if (!pantryIngredients.Any())
+        {
+            <section class="wireframe-section empty-state">
+                <div class="empty-art"><i class="bi bi-basket" aria-hidden="true"></i></div>
+                <h2>Your pantry is empty</h2>
+                <p>Browse the catalog and add ingredients you keep on hand.</p>
+                <button class="wire-btn primary" @onclick="() => SetView(PantryView.Catalog)">Browse Catalog</button>
+            </section>
+        }
+        else
+        {
+            <section class="wireframe-section pantry-toolbar">
+                <div class="search-field">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input type="search" class="form-control" placeholder="Search your pantry..." aria-label="Search pantry" @bind="pantrySearch" @bind:event="oninput" />
+                </div>
+                <div class="button-row">
+                    <button class="wire-btn secondary btn-sm" @onclick="SelectAllForSearch">Select All for Search</button>
+                    <button class="wire-btn secondary btn-sm" @onclick="ClearSearchSelection">Clear Search Selection</button>
+                </div>
+                <p class="pantry-hint"><i class="bi bi-info-circle"></i> Check items you want to use for today's recipe search. Unchecked items stay in your pantry but won't be searched.</p>
+            </section>
+
+            <section class="wireframe-section pantry-list-section">
+                @foreach (var item in FilteredPantry)
+                {
+                    var inSearch = searchSelectedIds.Contains(item.Id);
+                    <div class="pantry-row @(inSearch ? "selected" : "")">
+                        <label class="pantry-row-main">
+                            <input type="checkbox" checked="@inSearch" @onchange="() => ToggleSearchSelection(item.Id)" />
+                            <span class="pantry-item-name">@item.Name</span>
+                            <span class="ingredient-badge @(item.IsDefault ? "" : "custom")">@(item.IsDefault ? item.Category : "Custom")</span>
+                        </label>
+                        <div class="pantry-row-actions">
+                            @if (!item.IsDefault && isLoggedIn)
+                            {
+                                <div class="kebab-menu">
+                                    <button type="button" class="kebab-trigger" aria-label="Actions" @onclick="() => ToggleMenu(item.Id)">
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+                                    @if (openMenuId == item.Id)
+                                    {
+                                        <div class="kebab-dropdown">
+                                            <button type="button" @onclick="() => OpenEditModal(item)">Edit</button>
+                                            <button type="button" class="danger" @onclick="() => ConfirmDeleteCustom(item)">Delete</button>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            <button type="button" class="wire-btn danger btn-sm" @onclick="() => RemoveFromPantry(item.Id)">Remove</button>
+                        </div>
+                    </div>
+                }
+            </section>
+        }
+    }
+    else
+    {
+        <section class="wireframe-section pantry-toolbar">
+            <div class="search-field">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input type="search" class="form-control" placeholder="Search ingredients..." aria-label="Search catalog" value="@catalogSearch" @oninput="OnCatalogSearch" />
+            </div>
+            <div class="category-chips" role="group" aria-label="Filter by category">
+                <button type="button" class="category-chip @(catalogCategory == "All" ? "active" : "")" @onclick='() => SetCategory("All")'>All</button>
+                @foreach (var cat in categories)
+                {
+                    <button type="button" class="category-chip @(catalogCategory == cat ? "active" : "")" @onclick="() => SetCategory(cat)">@cat</button>
+                }
+            </div>
+        </section>
+
+        @if (!catalogIngredients.Any())
+        {
+            <section class="wireframe-section empty-state">
+                <h2>No ingredients found</h2>
+                <p>Try a different search or category.</p>
+            </section>
+        }
+        else
+        {
+            <section class="wireframe-section catalog-grid">
+                @foreach (var item in catalogIngredients)
+                {
+                    var inPantry = pantryIds.Contains(item.Id);
+                    <article class="catalog-card @(inPantry ? "in-pantry" : "")">
+                        <div>
+                            <h3>@item.Name</h3>
+                            <span class="ingredient-badge">@item.Category</span>
+                        </div>
+                        @if (inPantry)
+                        {
+                            <span class="in-pantry-label"><i class="bi bi-check-circle"></i> In Pantry</span>
+                        }
+                        else
+                        {
+                            <button type="button" class="wire-btn primary btn-sm" @onclick="() => AddToPantry(item.Id)">Add to Pantry</button>
+                        }
+                    </article>
+                }
+            </section>
+        }
+    }
+
+    @if (pantryIngredients.Any())
+    {
+        <div class="sticky-action-bar">
+            <div>
+                <strong>@searchSelectedIds.Count of @pantryIngredients.Count</strong>
+                <span> selected for recipe search</span>
+            </div>
+            <button class="wire-btn primary" disabled="@(searchSelectedIds.Count == 0)" @onclick="FindRecipes">
+                Find Recipes &rarr;
+            </button>
+        </div>
+    }
+
+    @if (showLoginPrompt)
+    {
+        <div class="modal-backdrop" @onclick="ContinueAsGuest">
+            <section class="app-modal" role="dialog" aria-modal="true" aria-labelledby="save-pantry-title" @onclick:stopPropagation="true">
+                <button class="modal-close" @onclick="CancelLoginPrompt" aria-label="Close">&times;</button>
+                <h2 id="save-pantry-title">Save your pantry?</h2>
+                <p class="field-note">
+                    Log in to save your pantry so it's ready next time on any device.
+                    You can keep going as a guest &mdash; we'll still show you recipes.
+                </p>
+                <div class="modal-actions">
+                    <button class="wire-btn secondary" @onclick="ContinueAsGuest">No thanks, continue</button>
+                    <button class="wire-btn primary" @onclick="LoginToSave">Log in to save</button>
+                </div>
+            </section>
+        </div>
+    }
+
+    @if (isAddModalOpen)
+    {
+        <div class="modal-backdrop" @onclick="CloseModals">
+            <section class="app-modal" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
+                <button class="modal-close" @onclick="CloseModals">&times;</button>
+                <h2>Add Custom Ingredient</h2>
+                <label for="new-ingredient">Name</label>
+                <input id="new-ingredient" class="form-control" maxlength="40" @bind="newIngredientName" />
+                <div class="modal-actions">
+                    <button class="wire-btn secondary" @onclick="CloseModals">Cancel</button>
+                    <button class="wire-btn primary" @onclick="AddCustomIngredient">Add &amp; Save to Pantry</button>
+                </div>
+            </section>
+        </div>
+    }
+
+    @if (isEditModalOpen)
+    {
+        <div class="modal-backdrop" @onclick="CloseModals">
+            <section class="app-modal" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
+                <button class="modal-close" @onclick="CloseModals">&times;</button>
+                <h2>Edit Ingredient</h2>
+                <input class="form-control" maxlength="40" @bind="editIngredientName" />
+                <div class="modal-actions">
+                    <button class="wire-btn secondary" @onclick="CloseModals">Cancel</button>
+                    <button class="wire-btn primary" @onclick="SaveEdit">Save</button>
+                </div>
+            </section>
+        </div>
+    }
+</div>
+
+@code {
+    private enum PantryView { Pantry, Catalog }
+
+    private PantryView viewMode = PantryView.Pantry;
+    private List<Ingredient> pantryIngredients = new();
+    private List<Ingredient> catalogIngredients = new();
+    private List<string> categories = new();
+    private HashSet<int> pantryIds = new();
+    private HashSet<int> searchSelectedIds = new();
+
+    private string pantrySearch = "";
+    private string catalogSearch = "";
+    private string catalogCategory = "All";
+    private string? statusMessage;
+    private bool isStatusError;
+    private bool isLoggedIn;
+    private string? userId;
+    private int? openMenuId;
+    private bool isAddModalOpen;
+    private bool isEditModalOpen;
+    private bool showLoginPrompt;
+    private string newIngredientName = "";
+    private string editIngredientName = "";
+    private int? editingId;
+    private bool clientInitialized;
+
+    [SupplyParameterFromQuery(Name = "selected")]
+    public string? SelectedQuery { get; set; }
+
+    private IEnumerable<Ingredient> FilteredPantry =>
+        string.IsNullOrWhiteSpace(pantrySearch)
+            ? pantryIngredients
+            : pantryIngredients.Where(i => i.Name.Contains(pantrySearch, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        isLoggedIn = auth.User.Identity?.IsAuthenticated == true;
+        userId = isLoggedIn ? (await UserManager.GetUserAsync(auth.User))?.Id : null;
+
+        categories = await Catalog.GetCategoriesAsync(userId);
+
+        if (isLoggedIn)
+        {
+            await LoadDbPantryAsync();
+            RestoreSearchSelection();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || clientInitialized)
+            return;
+
+        clientInitialized = true;
+
+        if (isLoggedIn && userId != null)
+        {
+            // A guest who just logged in may have a local pantry to migrate.
+            var localIds = await LocalPantryStore.GetAsync(JS);
+            if (localIds.Count > 0)
+            {
+                await Pantry.AddManyToPantryAsync(userId, localIds);
+                await LocalPantryStore.ClearAsync(JS);
+                await LoadDbPantryAsync();
+            }
+        }
+        else
+        {
+            await LoadLocalPantryAsync();
+        }
+
+        RestoreSearchSelection();
+        StateHasChanged();
+    }
+
+    private async Task LoadDbPantryAsync()
+    {
+        if (userId == null)
+            return;
+
+        pantryIngredients = await Pantry.GetPantryIngredientsAsync(userId);
+        pantryIds = pantryIngredients.Select(i => i.Id).ToHashSet();
+
+        if (searchSelectedIds.Count == 0 && pantryIngredients.Count > 0 && string.IsNullOrWhiteSpace(SelectedQuery))
+            searchSelectedIds = pantryIds.ToHashSet();
+    }
+
+    private async Task LoadLocalPantryAsync()
+    {
+        var localIds = await LocalPantryStore.GetAsync(JS);
+        pantryIds = localIds.ToHashSet();
+        pantryIngredients = Db.Ingredients
+            .Where(i => pantryIds.Contains(i.Id))
+            .OrderBy(i => i.Name)
+            .ToList();
+
+        if (searchSelectedIds.Count == 0 && pantryIngredients.Count > 0 && string.IsNullOrWhiteSpace(SelectedQuery))
+            searchSelectedIds = pantryIds.ToHashSet();
+    }
+
+    private void RestoreSearchSelection()
+    {
+        if (string.IsNullOrWhiteSpace(SelectedQuery))
+            return;
+
+        searchSelectedIds = SelectedQuery
+            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => int.TryParse(s, out var id) ? id : 0)
+            .Where(id => id > 0 && pantryIds.Contains(id))
+            .ToHashSet();
+    }
+
+    private async Task LoadCatalogAsync()
+    {
+        catalogIngredients = await Catalog.GetCatalogAsync(userId, catalogSearch, catalogCategory);
+    }
+
+    private async Task SetView(PantryView view)
+    {
+        viewMode = view;
+        if (view == PantryView.Catalog)
+            await LoadCatalogAsync();
+    }
+
+    private async Task SetCategory(string category)
+    {
+        catalogCategory = category;
+        await LoadCatalogAsync();
+    }
+
+    private async Task AddToPantry(int ingredientId)
+    {
+        if (pantryIds.Contains(ingredientId))
+            return;
+
+        pantryIds.Add(ingredientId);
+        searchSelectedIds.Add(ingredientId);
+
+        if (isLoggedIn && userId != null)
+        {
+            await Pantry.AddToPantryAsync(userId, ingredientId);
+            await LoadDbPantryAsync();
+        }
+        else
+        {
+            await LocalPantryStore.SetAsync(JS, pantryIds);
+            RefreshLocalPantryList();
+        }
+
+        SetStatus("Added to your pantry.", false);
+    }
+
+    private async Task RemoveFromPantry(int ingredientId)
+    {
+        pantryIds.Remove(ingredientId);
+        searchSelectedIds.Remove(ingredientId);
+
+        if (isLoggedIn && userId != null)
+        {
+            await Pantry.RemoveFromPantryAsync(userId, ingredientId);
+            await LoadDbPantryAsync();
+        }
+        else
+        {
+            await LocalPantryStore.SetAsync(JS, pantryIds);
+            RefreshLocalPantryList();
+        }
+
+        SetStatus("Removed from pantry.", false);
+    }
+
+    private void RefreshLocalPantryList()
+    {
+        pantryIngredients = Db.Ingredients
+            .Where(i => pantryIds.Contains(i.Id))
             .OrderBy(i => i.Name)
             .ToList();
     }
 
-    private void SeedIngredients()
+    private void ToggleSearchSelection(int id)
     {
-        if (Db.Ingredients.Any())
-            return;
-
-        Db.Ingredients.AddRange(
-            new Ingredient { Name = "Chicken Breast", Category = "Meat" },
-            new Ingredient { Name = "Rice", Category = "Pantry" },
-            new Ingredient { Name = "Eggs", Category = "Dairy" },
-            new Ingredient { Name = "Milk", Category = "Dairy" },
-            new Ingredient { Name = "Cheddar Cheese", Category = "Dairy" },
-            new Ingredient { Name = "Garlic", Category = "Vegetable" },
-            new Ingredient { Name = "Onion", Category = "Vegetable" },
-            new Ingredient { Name = "Tomato", Category = "Vegetable" },
-            new Ingredient { Name = "Pasta", Category = "Pantry" },
-            new Ingredient { Name = "Olive Oil", Category = "Pantry" },
-            new Ingredient { Name = "Flour", Category = "Pantry" },
-            new Ingredient { Name = "Bell Pepper", Category = "Vegetable" }
-        );
-
-        Db.SaveChanges();
+        if (searchSelectedIds.Contains(id))
+            searchSelectedIds.Remove(id);
+        else
+            searchSelectedIds.Add(id);
     }
 
-    private void ToggleIngredient(int id)
-    {
-        showMaxWarning = false;
-
-        if (selectedIds.Contains(id))
-        {
-            selectedIds.Remove(id);
-            return;
-        }
-
-        if (selectedIds.Count >= 15)
-        {
-            showMaxWarning = true;
-            return;
-        }
-
-        selectedIds.Add(id);
-    }
-
-    private void AddIngredient()
-    {
-        if (string.IsNullOrWhiteSpace(newIngredient))
-            return;
-
-        Db.Ingredients.Add(new Ingredient
-        {
-            Name = newIngredient.Trim(),
-            Category = "Other",
-            IsDefault = false
-        });
-
-        Db.SaveChanges();
-
-        newIngredient = "";
-        LoadIngredients();
-    }
-
-    private void UpdateIngredient(int id, string? newName)
-    {
-        if (string.IsNullOrWhiteSpace(newName))
-            return;
-
-        var ingredient = Db.Ingredients
-            .FirstOrDefault(i => i.Id == id && !i.IsDefault);
-
-        if (ingredient == null)
-            return;
-
-        ingredient.Name = newName.Trim();
-        Db.SaveChanges();
-
-        LoadIngredients();
-    }
-
-    private void DeleteIngredient(int id)
-    {
-        var ingredient = Db.Ingredients
-            .FirstOrDefault(i => i.Id == id && !i.IsDefault);
-
-        if (ingredient == null)
-            return;
-
-        Db.Ingredients.Remove(ingredient);
-        Db.SaveChanges();
-
-        selectedIds.Remove(id);
-        LoadIngredients();
-    }
+    private void SelectAllForSearch() => searchSelectedIds = pantryIds.ToHashSet();
+    private void ClearSearchSelection() => searchSelectedIds.Clear();
 
     private void FindRecipes()
     {
-        var ids = string.Join(",", selectedIds);
-        Nav.NavigateTo($"/recipes?ingredients={ids}");
+        if (isLoggedIn)
+        {
+            NavigateToRecipes();
+            return;
+        }
+
+        showLoginPrompt = true;
+    }
+
+    private void NavigateToRecipes()
+    {
+        Nav.NavigateTo($"/recipes?ingredients={string.Join(",", searchSelectedIds)}");
+    }
+
+    private void ContinueAsGuest()
+    {
+        showLoginPrompt = false;
+        NavigateToRecipes();
+    }
+
+    private void CancelLoginPrompt()
+    {
+        showLoginPrompt = false;
+    }
+
+    private void LoginToSave()
+    {
+        // Local pantry stays in browser storage and is migrated to the account after login;
+        // the user lands on the recipe results for the ingredients they selected.
+        var recipesUrl = $"/recipes?ingredients={string.Join(",", searchSelectedIds)}";
+        Nav.NavigateTo($"/Account/Login?ReturnUrl={Uri.EscapeDataString(recipesUrl)}");
+    }
+
+    private void OpenAddModal() { newIngredientName = ""; isAddModalOpen = true; }
+    private void CloseModals() { isAddModalOpen = false; isEditModalOpen = false; editingId = null; }
+
+    private async Task AddCustomIngredient()
+    {
+        if (userId == null || string.IsNullOrWhiteSpace(newIngredientName)) return;
+
+        var name = newIngredientName.Trim();
+        if (Db.Ingredients.Any(i => i.Name.ToLower() == name.ToLower()))
+        {
+            SetStatus("That ingredient already exists.", true);
+            return;
+        }
+
+        var ingredient = new Ingredient { Name = name, Category = "Custom", IsDefault = false, CreatedByUserId = userId };
+        Db.Ingredients.Add(ingredient);
+        await Db.SaveChangesAsync();
+        await Pantry.AddToPantryAsync(userId, ingredient.Id);
+        searchSelectedIds.Add(ingredient.Id);
+        await LoadDbPantryAsync();
+        CloseModals();
+        SetStatus($"{name} added to pantry.", false);
+    }
+
+    private void ToggleMenu(int id) => openMenuId = openMenuId == id ? null : id;
+
+    private void OpenEditModal(Ingredient item)
+    {
+        editingId = item.Id;
+        editIngredientName = item.Name;
+        isEditModalOpen = true;
+        openMenuId = null;
+    }
+
+    private async Task SaveEdit()
+    {
+        if (editingId == null) return;
+        var item = Db.Ingredients.FirstOrDefault(i => i.Id == editingId && i.CreatedByUserId == userId);
+        if (item == null) return;
+        item.Name = editIngredientName.Trim();
+        await Db.SaveChangesAsync();
+        await LoadDbPantryAsync();
+        CloseModals();
+    }
+
+    private async Task ConfirmDeleteCustom(Ingredient item)
+    {
+        openMenuId = null;
+        if (!await JS.InvokeAsync<bool>("confirm", $"Delete \"{item.Name}\"?")) return;
+        await Pantry.RemoveFromPantryAsync(userId!, item.Id);
+        Db.Ingredients.Remove(item);
+        await Db.SaveChangesAsync();
+        searchSelectedIds.Remove(item.Id);
+        await LoadDbPantryAsync();
+    }
+
+    private void SetStatus(string msg, bool error) { statusMessage = msg; isStatusError = error; }
+
+    private async Task OnCatalogSearch(ChangeEventArgs e)
+    {
+        catalogSearch = e.Value?.ToString() ?? "";
+        await LoadCatalogAsync();
     }
 }

@@ -2628,7 +2628,7 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\25ave\\.nuget\\packages\\": {}
+    "C:\\Users\\25ave\\AppData\\Local\\Temp\\cursor-sandbox-cache\\4c40de0c6bb959ae3a9f4ff7aa57060b\\nuget": {}
   },
   "project": {
     "version": "1.0.0",
@@ -2636,7 +2636,7 @@
       "projectUniqueName": "C:\\Users\\25ave\\OneDrive\\Desktop\\BYU-IDAHO\\2026_SPRING\\CSE 325\\recipe-suggestions\\recipe-suggestions.csproj",
       "projectName": "recipe-suggestions",
       "projectPath": "C:\\Users\\25ave\\OneDrive\\Desktop\\BYU-IDAHO\\2026_SPRING\\CSE 325\\recipe-suggestions\\recipe-suggestions.csproj",
-      "packagesPath": "C:\\Users\\25ave\\.nuget\\packages\\",
+      "packagesPath": "C:\\Users\\25ave\\AppData\\Local\\Temp\\cursor-sandbox-cache\\4c40de0c6bb959ae3a9f4ff7aa57060b\\nuget",
       "outputPath": "C:\\Users\\25ave\\OneDrive\\Desktop\\BYU-IDAHO\\2026_SPRING\\CSE 325\\recipe-suggestions\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [

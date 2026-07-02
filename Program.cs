@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using recipe_suggestions.Components;
 using recipe_suggestions.Components.Account;
 using recipe_suggestions.Data;
+using recipe_suggestions.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +24,18 @@ builder.Services.AddAuthentication(options =>
     })
     .AddIdentityCookies();
 
+builder.Services.AddHttpClient<MealDbService>(client =>
+{
+    client.BaseAddress = new Uri("https://www.themealdb.com/api/json/v1/1/");
+});
+
+builder.Services.AddHttpClient<IngredientCatalogService>(client =>
+{
+    client.BaseAddress = new Uri("https://www.themealdb.com/api/json/v1/1/");
+});
+
+builder.Services.AddScoped<PantryService>();
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(connectionString));
@@ -36,6 +49,13 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var catalog = scope.ServiceProvider.GetRequiredService<IngredientCatalogService>();
+    await catalog.EnsureCatalogSeededAsync();
+    await catalog.SyncMealDbCatalogAsync();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

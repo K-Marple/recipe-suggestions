@@ -2,6 +2,7 @@
 @layout recipe_suggestions.Components.Layout.MainLayout
 @inject NavigationManager NavigationManager
 
+<div class="account-page">
 @if (HttpContext is null)
 {
     <p>Loading...</p>
@@ -10,6 +11,7 @@ else
 {
     @Body
 }
+</div>
 
 @code {
     [CascadingParameter]
