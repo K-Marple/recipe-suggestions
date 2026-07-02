@@ -1,9 +1,9 @@
 @page "/recipes"
+@rendermode InteractiveServer
 @using Microsoft.EntityFrameworkCore
 @using recipe_suggestions.Data
 @using recipe_suggestions.Models
 @inject ApplicationDbContext Db
-@inject NavigationManager Nav
 
 <PageTitle>Recipe Suggestions</PageTitle>
 
@@ -27,20 +27,30 @@ else if (matchedRecipes.Count == 0)
 }
 else
 {
-    <p>Based on your selected ingredients:</p>
+    <p>Recipes matched from your selected ingredients.</p>
 
-    @foreach (var recipe in matchedRecipes)
+    <a class="btn btn-outline-secondary mb-3" href="/ingredients">Edit Ingredients</a>
+
+    @foreach (var item in matchedRecipes)
     {
-        <div class="card mb-3">
+        <div class="card mb-3 shadow-sm">
             <div class="card-body">
-                <h4>@recipe.Name</h4>
-                <p>@recipe.Description</p>
+                <h4>@item.Recipe.Name</h4>
+
+                <p>@item.Recipe.Description</p>
+
                 <p>
-                    <strong>Time:</strong> @recipe.PrepTimeMinutes minutes |
-                    <strong>Difficulty:</strong> @recipe.Difficulty
+                    <strong>Match:</strong> @item.MatchCount ingredient(s) |
+                    <strong>Time:</strong> @item.Recipe.PrepTimeMinutes minutes |
+                    <strong>Difficulty:</strong> @item.Recipe.Difficulty
                 </p>
 
-                <a class="btn btn-dark" href="/recipe/@recipe.Id">View Recipe</a>
+                <p>
+                    <strong>Matched ingredients:</strong>
+                    @string.Join(", ", item.MatchedIngredientNames)
+                </p>
+
+                <a class="btn btn-dark" href="/recipe/@item.Recipe.Id">View Recipe</a>
             </div>
         </div>
     }
@@ -51,7 +61,7 @@ else
     public string? IngredientQuery { get; set; }
 
     private List<int> selectedIngredientIds = new();
-    private List<Recipe> matchedRecipes = new();
+    private List<RecipeMatch> matchedRecipes = new();
 
     protected override void OnInitialized()
     {
@@ -67,8 +77,19 @@ else
 
         matchedRecipes = Db.Recipes
             .Include(r => r.RecipeIngredients)
-            .Where(r => r.RecipeIngredients
-                .Any(ri => selectedIngredientIds.Contains(ri.IngredientId)))
+            .ThenInclude(ri => ri.Ingredient)
+            .Select(r => new RecipeMatch
+            {
+                Recipe = r,
+                MatchCount = r.RecipeIngredients
+                    .Count(ri => selectedIngredientIds.Contains(ri.IngredientId)),
+                MatchedIngredientNames = r.RecipeIngredients
+                    .Where(ri => selectedIngredientIds.Contains(ri.IngredientId))
+                    .Select(ri => ri.Ingredient!.Name)
+                    .ToList()
+            })
+            .Where(r => r.MatchCount > 0)
+            .OrderByDescending(r => r.MatchCount)
             .ToList();
     }
 
@@ -141,5 +162,12 @@ else
             IngredientId = ingredient.Id,
             Quantity = quantity
         });
+    }
+
+    private class RecipeMatch
+    {
+        public Recipe Recipe { get; set; } = new();
+        public int MatchCount { get; set; }
+        public List<string> MatchedIngredientNames { get; set; } = new();
     }
 }

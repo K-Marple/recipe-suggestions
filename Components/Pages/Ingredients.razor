@@ -13,6 +13,13 @@
 
 <div class="mb-3">
     <input class="form-control"
+           placeholder="Search ingredients..."
+           @bind="searchText"
+           @bind:event="oninput" />
+</div>
+
+<div class="mb-3">
+    <input class="form-control"
            placeholder="Add custom ingredient..."
            @bind="newIngredient" />
 
@@ -30,25 +37,38 @@
     </div>
 }
 
-<div class="row">
-    @foreach (var ingredient in ingredients)
-    {
-        <div class="col-md-3 col-sm-6 mb-3">
-            <button class="btn w-100 @(selectedIds.Contains(ingredient.Id) ? "btn-success" : "btn-outline-secondary")"
-                    @onclick="() => ToggleIngredient(ingredient.Id)">
-                @ingredient.Name
-            </button>
-
-            @if (!ingredient.IsDefault)
-            {
-                <button class="btn btn-sm btn-danger w-100 mt-1"
-                        @onclick="() => DeleteIngredient(ingredient.Id)">
-                    Delete Custom
+@if (!FilteredIngredients.Any())
+{
+    <div class="alert alert-info">
+        No ingredients found. Add it as a custom ingredient above.
+    </div>
+}
+else
+{
+    <div class="row">
+        @foreach (var ingredient in FilteredIngredients)
+        {
+            <div class="col-md-3 col-sm-6 mb-3">
+                <button class="btn w-100 @(selectedIds.Contains(ingredient.Id) ? "btn-success" : "btn-outline-secondary")"
+                        @onclick="() => ToggleIngredient(ingredient.Id)">
+                    @ingredient.Name
                 </button>
-            }
-        </div>
-    }
-</div>
+
+                @if (!ingredient.IsDefault)
+                {
+                    <input class="form-control form-control-sm mt-1"
+                           value="@ingredient.Name"
+                           @onchange="e => UpdateIngredient(ingredient.Id, e.Value?.ToString())" />
+
+                    <button class="btn btn-sm btn-danger w-100 mt-1"
+                            @onclick="() => DeleteIngredient(ingredient.Id)">
+                        Delete Custom
+                    </button>
+                }
+            </div>
+        }
+    </div>
+}
 
 <button class="btn btn-dark"
         disabled="@(selectedIds.Count == 0)"
@@ -59,8 +79,17 @@
 @code {
     private List<Ingredient> ingredients = new();
     private HashSet<int> selectedIds = new();
+
     private string newIngredient = "";
+    private string searchText = "";
+
     private bool showMaxWarning = false;
+
+    private IEnumerable<Ingredient> FilteredIngredients =>
+        string.IsNullOrWhiteSpace(searchText)
+            ? ingredients
+            : ingredients.Where(i =>
+                i.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase));
 
     protected override void OnInitialized()
     {
@@ -132,6 +161,23 @@
         Db.SaveChanges();
 
         newIngredient = "";
+        LoadIngredients();
+    }
+
+    private void UpdateIngredient(int id, string? newName)
+    {
+        if (string.IsNullOrWhiteSpace(newName))
+            return;
+
+        var ingredient = Db.Ingredients
+            .FirstOrDefault(i => i.Id == id && !i.IsDefault);
+
+        if (ingredient == null)
+            return;
+
+        ingredient.Name = newName.Trim();
+        Db.SaveChanges();
+
         LoadIngredients();
     }
 

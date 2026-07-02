@@ -2,10 +2,10 @@
 @rendermode InteractiveServer
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Components.Authorization
 @using recipe_suggestions.Data
 @using recipe_suggestions.Models
 @inject ApplicationDbContext Db
-@inject NavigationManager Nav
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthStateProvider
 
@@ -18,43 +18,60 @@
 }
 else
 {
-    <h1>@recipe.Name</h1>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h1>@recipe.Name</h1>
+            <p class="lead">@recipe.Description</p>
 
-    <p>@recipe.Description</p>
+            <p>
+                <strong>Time:</strong> @recipe.PrepTimeMinutes minutes |
+                <strong>Difficulty:</strong> @recipe.Difficulty
+            </p>
 
-    <p>
-        <strong>Time:</strong> @recipe.PrepTimeMinutes minutes |
-        <strong>Difficulty:</strong> @recipe.Difficulty
-    </p>
+            <hr />
 
-    <h3>Ingredients</h3>
-    <ul>
-        @foreach (var item in recipe.RecipeIngredients)
-        {
-            <li>@item.Quantity @item.Ingredient?.Name</li>
-        }
-    </ul>
+            <h3>Ingredients</h3>
+            <ul>
+                @foreach (var item in recipe.RecipeIngredients)
+                {
+                    <li>@item.Quantity @item.Ingredient?.Name</li>
+                }
+            </ul>
 
-    <h3>Instructions</h3>
-    <p style="white-space: pre-line">@recipe.Instructions</p>
+            <h3>Instructions</h3>
+            <p style="white-space: pre-line">@recipe.Instructions</p>
 
-    @if (!isLoggedIn)
-    {
-        <div class="alert alert-info">
-            Log in to save recipes.
+            <hr />
+
+            @if (!isLoggedIn)
+            {
+                <div class="alert alert-info">
+                    Log in to save recipes.
+                </div>
+
+                <a class="btn btn-primary" href="/Account/Login">Login</a>
+            }
+            else if (savedRecipe != null)
+            {
+                <button class="btn @(savedRecipe.IsFavorite ? "btn-warning" : "btn-outline-warning")"
+                        @onclick="ToggleFavorite">
+                    @(savedRecipe.IsFavorite ? "★ Favorited" : "☆ Mark Favorite")
+                </button>
+
+                <span class="ms-2 text-success">Saved</span>
+            }
+            else
+            {
+                <button class="btn btn-dark" @onclick="SaveRecipe">
+                    Save Recipe
+                </button>
+            }
+
+            <a class="btn btn-outline-secondary ms-2" href="/ingredients">
+                Choose More Ingredients
+            </a>
         </div>
-        <a class="btn btn-outline-primary" href="/Account/Login">Login</a>
-    }
-    else if (alreadySaved)
-    {
-        <button class="btn btn-success" disabled>Saved</button>
-    }
-    else
-    {
-        <button class="btn btn-dark" @onclick="SaveRecipe">Save Recipe</button>
-    }
-
-    <a class="btn btn-outline-secondary ms-2" href="/ingredients">Choose More Ingredients</a>
+    </div>
 }
 
 @code {
@@ -62,8 +79,8 @@ else
     public int Id { get; set; }
 
     private Recipe? recipe;
+    private SavedRecipe? savedRecipe;
     private bool isLoggedIn;
-    private bool alreadySaved;
     private string? userId;
 
     protected override async Task OnInitializedAsync()
@@ -83,12 +100,17 @@ else
             var appUser = await UserManager.GetUserAsync(user);
             userId = appUser?.Id;
 
-            if (userId != null)
-            {
-                alreadySaved = Db.SavedRecipes.Any(s =>
-                    s.UserId == userId && s.RecipeId == Id);
-            }
+            LoadSavedRecipe();
         }
+    }
+
+    private void LoadSavedRecipe()
+    {
+        if (userId == null)
+            return;
+
+        savedRecipe = Db.SavedRecipes
+            .FirstOrDefault(s => s.UserId == userId && s.RecipeId == Id);
     }
 
     private void SaveRecipe()
@@ -104,6 +126,15 @@ else
         });
 
         Db.SaveChanges();
-        alreadySaved = true;
+        LoadSavedRecipe();
+    }
+
+    private void ToggleFavorite()
+    {
+        if (savedRecipe == null)
+            return;
+
+        savedRecipe.IsFavorite = !savedRecipe.IsFavorite;
+        Db.SaveChanges();
     }
 }
