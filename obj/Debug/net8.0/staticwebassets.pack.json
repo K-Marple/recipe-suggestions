@@ -1,0 +1,41 @@
+{
+  "Files": [
+    {
+      "Id": "C:\\Users\\25ave\\OneDrive\\Desktop\\BYU-IDAHO\\2026_SPRING\\CSE 325\\recipe-suggestions\\obj\\Debug\\net8.0\\scopedcss\\projectbundle\\recipe-suggestions.bundle.scp.css",
+      "PackagePath": "staticwebassets\\recipe-suggestions.bundle.scp.css"
+    },
+    {
+      "Id": "C:\\Users\\25ave\\OneDrive\\Desktop\\BYU-IDAHO\\2026_SPRING\\CSE 325\\recipe-suggestions\\wwwroot\\app.css",
+      "PackagePath": "staticwebassets\\app.css"
+    },
+    {
+      "Id": "C:\\Users\\25ave\\OneDrive\\Desktop\\BYU-IDAHO\\2026_SPRING\\CSE 325\\recipe-suggestions\\wwwroot\\bootstrap\\bootstrap.min.css",
+      "PackagePath": "staticwebassets\\bootstrap\\bootstrap.min.css"
+    },
+    {
+      "Id": "C:\\Users\\25ave\\OneDrive\\Desktop\\BYU-IDAHO\\2026_SPRING\\CSE 325\\recipe-suggestions\\wwwroot\\bootstrap\\bootstrap.min.css.map",
+      "PackagePath": "staticwebassets\\bootstrap\\bootstrap.min.css.map"
+    },
+    {
+      "Id": "C:\\Users\\25ave\\OneDrive\\Desktop\\BYU-IDAHO\\2026_SPRING\\CSE 325\\recipe-suggestions\\wwwroot\\favicon.png",
+      "PackagePath": "staticwebassets\\favicon.png"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.build.recipe-suggestions.props",
+      "PackagePath": "build\\recipe-suggestions.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.buildMultiTargeting.recipe-suggestions.props",
+      "PackagePath": "buildMultiTargeting\\recipe-suggestions.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.buildTransitive.recipe-suggestions.props",
+      "PackagePath": "buildTransitive\\recipe-suggestions.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.recipe-suggestions.Microsoft.AspNetCore.StaticWebAssets.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
+    }
+  ],
+  "ElementsToRemove": []
+}

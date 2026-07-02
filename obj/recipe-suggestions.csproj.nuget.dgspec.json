@@ -1,0 +1,88 @@
+{
+  "format": 1,
+  "restore": {
+    "C:\\Users\\25ave\\OneDrive\\Desktop\\BYU-IDAHO\\2026_SPRING\\CSE 325\\recipe-suggestions\\recipe-suggestions.csproj": {}
+  },
+  "projects": {
+    "C:\\Users\\25ave\\OneDrive\\Desktop\\BYU-IDAHO\\2026_SPRING\\CSE 325\\recipe-suggestions\\recipe-suggestions.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\25ave\\OneDrive\\Desktop\\BYU-IDAHO\\2026_SPRING\\CSE 325\\recipe-suggestions\\recipe-suggestions.csproj",
+        "projectName": "recipe-suggestions",
+        "projectPath": "C:\\Users\\25ave\\OneDrive\\Desktop\\BYU-IDAHO\\2026_SPRING\\CSE 325\\recipe-suggestions\\recipe-suggestions.csproj",
+        "packagesPath": "C:\\Users\\25ave\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\25ave\\OneDrive\\Desktop\\BYU-IDAHO\\2026_SPRING\\CSE 325\\recipe-suggestions\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\25ave\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "C:\\Program Files\\dotnet\\library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[8.0.15, )"
+            },
+            "Microsoft.AspNetCore.Identity.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[8.0.15, )"
+            },
+            "Microsoft.EntityFrameworkCore.Sqlite": {
+              "target": "Package",
+              "version": "[8.0.15, )"
+            },
+            "Microsoft.EntityFrameworkCore.Tools": {
+              "target": "Package",
+              "version": "[8.0.15, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.AspNetCore.App": {
+              "privateAssets": "none"
+            },
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.408/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}
