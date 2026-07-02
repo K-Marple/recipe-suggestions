@@ -38,6 +38,14 @@
                     @onclick="() => ToggleIngredient(ingredient.Id)">
                 @ingredient.Name
             </button>
+
+            @if (!ingredient.IsDefault)
+            {
+                <button class="btn btn-sm btn-danger w-100 mt-1"
+                        @onclick="() => DeleteIngredient(ingredient.Id)">
+                    Delete Custom
+                </button>
+            }
         </div>
     }
 </div>
@@ -57,7 +65,14 @@
     protected override void OnInitialized()
     {
         SeedIngredients();
-        ingredients = Db.Ingredients.OrderBy(i => i.Name).ToList();
+        LoadIngredients();
+    }
+
+    private void LoadIngredients()
+    {
+        ingredients = Db.Ingredients
+            .OrderBy(i => i.Name)
+            .ToList();
     }
 
     private void SeedIngredients()
@@ -117,7 +132,22 @@
         Db.SaveChanges();
 
         newIngredient = "";
-        ingredients = Db.Ingredients.OrderBy(i => i.Name).ToList();
+        LoadIngredients();
+    }
+
+    private void DeleteIngredient(int id)
+    {
+        var ingredient = Db.Ingredients
+            .FirstOrDefault(i => i.Id == id && !i.IsDefault);
+
+        if (ingredient == null)
+            return;
+
+        Db.Ingredients.Remove(ingredient);
+        Db.SaveChanges();
+
+        selectedIds.Remove(id);
+        LoadIngredients();
     }
 
     private void FindRecipes()
