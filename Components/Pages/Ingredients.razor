@@ -1,0 +1,128 @@
+@page "/ingredients"
+@rendermode InteractiveServer
+@using recipe_suggestions.Data
+@using recipe_suggestions.Models
+@inject ApplicationDbContext Db
+@inject NavigationManager Nav
+
+<PageTitle>Ingredients</PageTitle>
+
+<h1>My Ingredients</h1>
+
+<p>Select ingredients you already have. You can choose up to 15.</p>
+
+<div class="mb-3">
+    <input class="form-control"
+           placeholder="Add custom ingredient..."
+           @bind="newIngredient" />
+
+    <button class="btn btn-primary mt-2" @onclick="AddIngredient">
+        Add Ingredient
+    </button>
+</div>
+
+<p><strong>@selectedIds.Count</strong> ingredients selected</p>
+
+@if (showMaxWarning)
+{
+    <div class="alert alert-warning">
+        Maximum reached. You can select up to 15 ingredients.
+    </div>
+}
+
+<div class="row">
+    @foreach (var ingredient in ingredients)
+    {
+        <div class="col-md-3 col-sm-6 mb-3">
+            <button class="btn w-100 @(selectedIds.Contains(ingredient.Id) ? "btn-success" : "btn-outline-secondary")"
+                    @onclick="() => ToggleIngredient(ingredient.Id)">
+                @ingredient.Name
+            </button>
+        </div>
+    }
+</div>
+
+<button class="btn btn-dark"
+        disabled="@(selectedIds.Count == 0)"
+        @onclick="FindRecipes">
+    Find Recipes
+</button>
+
+@code {
+    private List<Ingredient> ingredients = new();
+    private HashSet<int> selectedIds = new();
+    private string newIngredient = "";
+    private bool showMaxWarning = false;
+
+    protected override void OnInitialized()
+    {
+        SeedIngredients();
+        ingredients = Db.Ingredients.OrderBy(i => i.Name).ToList();
+    }
+
+    private void SeedIngredients()
+    {
+        if (Db.Ingredients.Any())
+            return;
+
+        Db.Ingredients.AddRange(
+            new Ingredient { Name = "Chicken Breast", Category = "Meat" },
+            new Ingredient { Name = "Rice", Category = "Pantry" },
+            new Ingredient { Name = "Eggs", Category = "Dairy" },
+            new Ingredient { Name = "Milk", Category = "Dairy" },
+            new Ingredient { Name = "Cheddar Cheese", Category = "Dairy" },
+            new Ingredient { Name = "Garlic", Category = "Vegetable" },
+            new Ingredient { Name = "Onion", Category = "Vegetable" },
+            new Ingredient { Name = "Tomato", Category = "Vegetable" },
+            new Ingredient { Name = "Pasta", Category = "Pantry" },
+            new Ingredient { Name = "Olive Oil", Category = "Pantry" },
+            new Ingredient { Name = "Flour", Category = "Pantry" },
+            new Ingredient { Name = "Bell Pepper", Category = "Vegetable" }
+        );
+
+        Db.SaveChanges();
+    }
+
+    private void ToggleIngredient(int id)
+    {
+        showMaxWarning = false;
+
+        if (selectedIds.Contains(id))
+        {
+            selectedIds.Remove(id);
+            return;
+        }
+
+        if (selectedIds.Count >= 15)
+        {
+            showMaxWarning = true;
+            return;
+        }
+
+        selectedIds.Add(id);
+    }
+
+    private void AddIngredient()
+    {
+        if (string.IsNullOrWhiteSpace(newIngredient))
+            return;
+
+        Db.Ingredients.Add(new Ingredient
+        {
+            Name = newIngredient.Trim(),
+            Category = "Other",
+            IsDefault = false
+        });
+
+        Db.SaveChanges();
+
+        newIngredient = "";
+        ingredients = Db.Ingredients.OrderBy(i => i.Name).ToList();
+    }
+
+    private void FindRecipes()
+    {
+        var ids = string.Join(",", selectedIds);
+        Nav.NavigateTo($"/recipes?ingredients={ids}");
+    }
+}

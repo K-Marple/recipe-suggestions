@@ -1,0 +1,109 @@
+@page "/recipe/{Id:int}"
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Identity
+@using recipe_suggestions.Data
+@using recipe_suggestions.Models
+@inject ApplicationDbContext Db
+@inject NavigationManager Nav
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Recipe Details</PageTitle>
+
+@if (recipe == null)
+{
+    <div class="alert alert-warning">Recipe not found.</div>
+    <a class="btn btn-primary" href="/ingredients">Back to Ingredients</a>
+}
+else
+{
+    <h1>@recipe.Name</h1>
+
+    <p>@recipe.Description</p>
+
+    <p>
+        <strong>Time:</strong> @recipe.PrepTimeMinutes minutes |
+        <strong>Difficulty:</strong> @recipe.Difficulty
+    </p>
+
+    <h3>Ingredients</h3>
+    <ul>
+        @foreach (var item in recipe.RecipeIngredients)
+        {
+            <li>@item.Quantity @item.Ingredient?.Name</li>
+        }
+    </ul>
+
+    <h3>Instructions</h3>
+    <p style="white-space: pre-line">@recipe.Instructions</p>
+
+    @if (!isLoggedIn)
+    {
+        <div class="alert alert-info">
+            Log in to save recipes.
+        </div>
+        <a class="btn btn-outline-primary" href="/Account/Login">Login</a>
+    }
+    else if (alreadySaved)
+    {
+        <button class="btn btn-success" disabled>Saved</button>
+    }
+    else
+    {
+        <button class="btn btn-dark" @onclick="SaveRecipe">Save Recipe</button>
+    }
+
+    <a class="btn btn-outline-secondary ms-2" href="/ingredients">Choose More Ingredients</a>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Recipe? recipe;
+    private bool isLoggedIn;
+    private bool alreadySaved;
+    private string? userId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        recipe = Db.Recipes
+            .Include(r => r.RecipeIngredients)
+            .ThenInclude(ri => ri.Ingredient)
+            .FirstOrDefault(r => r.Id == Id);
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        isLoggedIn = user.Identity?.IsAuthenticated == true;
+
+        if (isLoggedIn)
+        {
+            var appUser = await UserManager.GetUserAsync(user);
+            userId = appUser?.Id;
+
+            if (userId != null)
+            {
+                alreadySaved = Db.SavedRecipes.Any(s =>
+                    s.UserId == userId && s.RecipeId == Id);
+            }
+        }
+    }
+
+    private void SaveRecipe()
+    {
+        if (userId == null)
+            return;
+
+        Db.SavedRecipes.Add(new SavedRecipe
+        {
+            UserId = userId,
+            RecipeId = Id,
+            IsFavorite = false
+        });
+
+        Db.SaveChanges();
+        alreadySaved = true;
+    }
+}

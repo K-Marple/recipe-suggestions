@@ -1,0 +1,145 @@
+@page "/recipes"
+@using Microsoft.EntityFrameworkCore
+@using recipe_suggestions.Data
+@using recipe_suggestions.Models
+@inject ApplicationDbContext Db
+@inject NavigationManager Nav
+
+<PageTitle>Recipe Suggestions</PageTitle>
+
+<h1>Recipe Suggestions</h1>
+
+@if (selectedIngredientIds.Count == 0)
+{
+    <div class="alert alert-info">
+        Go to Ingredients first and select what you have.
+    </div>
+
+    <a class="btn btn-primary" href="/ingredients">Choose Ingredients</a>
+}
+else if (matchedRecipes.Count == 0)
+{
+    <div class="alert alert-warning">
+        No recipes found. Try selecting different ingredients.
+    </div>
+
+    <a class="btn btn-primary" href="/ingredients">Edit Ingredients</a>
+}
+else
+{
+    <p>Based on your selected ingredients:</p>
+
+    @foreach (var recipe in matchedRecipes)
+    {
+        <div class="card mb-3">
+            <div class="card-body">
+                <h4>@recipe.Name</h4>
+                <p>@recipe.Description</p>
+                <p>
+                    <strong>Time:</strong> @recipe.PrepTimeMinutes minutes |
+                    <strong>Difficulty:</strong> @recipe.Difficulty
+                </p>
+
+                <a class="btn btn-dark" href="/recipe/@recipe.Id">View Recipe</a>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "ingredients")]
+    public string? IngredientQuery { get; set; }
+
+    private List<int> selectedIngredientIds = new();
+    private List<Recipe> matchedRecipes = new();
+
+    protected override void OnInitialized()
+    {
+        SeedRecipes();
+
+        if (!string.IsNullOrWhiteSpace(IngredientQuery))
+        {
+            selectedIngredientIds = IngredientQuery
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(int.Parse)
+                .ToList();
+        }
+
+        matchedRecipes = Db.Recipes
+            .Include(r => r.RecipeIngredients)
+            .Where(r => r.RecipeIngredients
+                .Any(ri => selectedIngredientIds.Contains(ri.IngredientId)))
+            .ToList();
+    }
+
+    private void SeedRecipes()
+    {
+        if (Db.Recipes.Any())
+            return;
+
+        var chicken = Db.Ingredients.FirstOrDefault(i => i.Name == "Chicken Breast");
+        var rice = Db.Ingredients.FirstOrDefault(i => i.Name == "Rice");
+        var eggs = Db.Ingredients.FirstOrDefault(i => i.Name == "Eggs");
+        var garlic = Db.Ingredients.FirstOrDefault(i => i.Name == "Garlic");
+        var onion = Db.Ingredients.FirstOrDefault(i => i.Name == "Onion");
+        var pasta = Db.Ingredients.FirstOrDefault(i => i.Name == "Pasta");
+        var cheese = Db.Ingredients.FirstOrDefault(i => i.Name == "Cheddar Cheese");
+
+        if (chicken == null || rice == null || eggs == null)
+            return;
+
+        var stirFry = new Recipe
+        {
+            Name = "Garlic Chicken Rice Bowl",
+            Description = "A simple chicken and rice meal using pantry ingredients.",
+            PrepTimeMinutes = 25,
+            Difficulty = "Easy",
+            Instructions = "1. Cook rice.\n2. Cook chicken in a pan.\n3. Add garlic and onion.\n4. Serve chicken over rice."
+        };
+
+        var eggRice = new Recipe
+        {
+            Name = "Egg Fried Rice",
+            Description = "A quick meal using rice, eggs, and vegetables.",
+            PrepTimeMinutes = 15,
+            Difficulty = "Easy",
+            Instructions = "1. Scramble eggs.\n2. Add cooked rice.\n3. Stir in garlic and onion.\n4. Cook until warm."
+        };
+
+        var cheesyPasta = new Recipe
+        {
+            Name = "Cheesy Pasta",
+            Description = "A simple pasta meal with cheese.",
+            PrepTimeMinutes = 20,
+            Difficulty = "Easy",
+            Instructions = "1. Boil pasta.\n2. Drain pasta.\n3. Add cheese.\n4. Mix until creamy."
+        };
+
+        Db.Recipes.AddRange(stirFry, eggRice, cheesyPasta);
+        Db.SaveChanges();
+
+        AddRecipeIngredient(stirFry, chicken, "1 breast");
+        AddRecipeIngredient(stirFry, rice, "1 cup");
+        if (garlic != null) AddRecipeIngredient(stirFry, garlic, "2 cloves");
+        if (onion != null) AddRecipeIngredient(stirFry, onion, "1/2 onion");
+
+        AddRecipeIngredient(eggRice, rice, "1 cup");
+        AddRecipeIngredient(eggRice, eggs, "2 eggs");
+        if (garlic != null) AddRecipeIngredient(eggRice, garlic, "1 clove");
+
+        if (pasta != null) AddRecipeIngredient(cheesyPasta, pasta, "1 cup");
+        if (cheese != null) AddRecipeIngredient(cheesyPasta, cheese, "1/2 cup");
+
+        Db.SaveChanges();
+    }
+
+    private void AddRecipeIngredient(Recipe recipe, Ingredient ingredient, string quantity)
+    {
+        Db.RecipeIngredients.Add(new RecipeIngredient
+        {
+            RecipeId = recipe.Id,
+            IngredientId = ingredient.Id,
+            Quantity = quantity
+        });
+    }
+}

@@ -1,0 +1,103 @@
+@page "/savedrecipes"
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Components.Authorization
+@using recipe_suggestions.Data
+@using recipe_suggestions.Models
+
+@inject ApplicationDbContext Db
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Saved Recipes</PageTitle>
+
+<h1>Saved Recipes</h1>
+
+@if (!isLoggedIn)
+{
+    <div class="alert alert-info">
+        Login to save recipes.
+    </div>
+
+    <a class="btn btn-primary" href="/Account/Login">Login</a>
+}
+else if (savedRecipes.Count == 0)
+{
+    <div class="alert alert-warning">
+        You haven't saved any recipes yet.
+    </div>
+}
+else
+{
+    @foreach (var recipe in savedRecipes)
+    {
+        <div class="card mb-3">
+
+            <div class="card-body">
+
+                <h4>@recipe.Recipe!.Name</h4>
+
+                <p>@recipe.Recipe.Description</p>
+
+                <button class="btn btn-danger"
+                        @onclick="() => DeleteRecipe(recipe)">
+                    Remove
+                </button>
+
+                <a class="btn btn-dark ms-2"
+                   href="/recipe/@recipe.RecipeId">
+                    View
+                </a>
+
+            </div>
+
+        </div>
+    }
+}
+
+@code{
+
+    private List<SavedRecipe> savedRecipes = new();
+
+    private bool isLoggedIn;
+
+    private string? userId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+
+        var user = auth.User;
+
+        isLoggedIn = user.Identity?.IsAuthenticated == true;
+
+        if (!isLoggedIn)
+            return;
+
+        var appUser = await UserManager.GetUserAsync(user);
+
+        userId = appUser?.Id;
+
+        LoadRecipes();
+    }
+
+    private void LoadRecipes()
+    {
+        savedRecipes = Db.SavedRecipes
+            .Include(r => r.Recipe)
+            .Where(r => r.UserId == userId)
+            .OrderByDescending(r => r.SavedAt)
+            .ToList();
+    }
+
+    private void DeleteRecipe(SavedRecipe recipe)
+    {
+        Db.SavedRecipes.Remove(recipe);
+
+        Db.SaveChanges();
+
+        LoadRecipes();
+    }
+
+}
