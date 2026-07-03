@@ -11,11 +11,6 @@
 
         <div class="topbar-actions">
             <AuthorizeView>
-                <Authorized Context="authContext">
-                    <span class="avatar-dot" aria-hidden="true">@GetInitial(authContext.User)</span>
-                    <span class="topbar-welcome">@GetDisplayName(authContext.User)</span>
-                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
-                </Authorized>
                 <NotAuthorized>
                     <a class="topbar-login-button" href="/Account/Login">Log In</a>
                 </NotAuthorized>

@@ -11,6 +11,7 @@
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
+@inject RecipeSearchState RecipeState
 
 <PageTitle>Recipe Suggestions</PageTitle>
 
@@ -228,32 +229,66 @@
 </div>
 
 @code {
-    private enum RecipeFilter { All, PantryComplete, SearchComplete }
-
     [SupplyParameterFromQuery(Name = "ingredients")]
     public string? IngredientQuery { get; set; }
 
     [SupplyParameterFromQuery(Name = "filter")]
     public string? FilterQuery { get; set; }
 
-    private List<int> searchIngredientIds = new();
-    private List<string> pantryNames = new();
-    private List<string> searchNames = new();
-    private List<EnrichedRecipeMatch> enrichedMatches = new();
-    private List<EnrichedRecipeMatch> recipeCandidates = new();
-    private HashSet<string> favoritedMealIds = new();
-    private HashSet<string> savedMealIds = new();
-    private RecipeFilter filterMode = RecipeFilter.All;
-    private bool isLoading = true;
+    private List<int> searchIngredientIds => RecipeState.SearchIngredientIds;
+    private List<string> pantryNames => RecipeState.PantryNames;
+    private List<string> searchNames => RecipeState.SearchNames;
+    private List<EnrichedRecipeMatch> enrichedMatches => RecipeState.EnrichedMatches;
+    private List<EnrichedRecipeMatch> recipeCandidates => RecipeState.RecipeCandidates;
+    private HashSet<string> favoritedMealIds => RecipeState.FavoritedMealIds;
+    private HashSet<string> savedMealIds => RecipeState.SavedMealIds;
+    private RecipeFilter filterMode
+    {
+        get => RecipeState.FilterMode;
+        set => RecipeState.FilterMode = value;
+    }
+    private bool isLoading
+    {
+        get => RecipeState.IsLoading;
+        set => RecipeState.IsLoading = value;
+    }
     private bool isLoadingMore;
     private bool isLoggedIn;
-    private string? userId;
-    private string loadingProgress = "0";
-    private int allCount;
-    private int pantryCompleteCount;
-    private int searchCompleteCount;
-    private bool searchStarted;
-    private int nextCandidateIndex;
+    private string? userId
+    {
+        get => RecipeState.UserId;
+        set => RecipeState.UserId = value;
+    }
+    private string loadingProgress
+    {
+        get => RecipeState.LoadingProgress;
+        set => RecipeState.LoadingProgress = value;
+    }
+    private int allCount
+    {
+        get => RecipeState.AllCount;
+        set => RecipeState.AllCount = value;
+    }
+    private int pantryCompleteCount
+    {
+        get => RecipeState.PantryCompleteCount;
+        set => RecipeState.PantryCompleteCount = value;
+    }
+    private int searchCompleteCount
+    {
+        get => RecipeState.SearchCompleteCount;
+        set => RecipeState.SearchCompleteCount = value;
+    }
+    private bool searchStarted
+    {
+        get => RecipeState.SearchStarted;
+        set => RecipeState.SearchStarted = value;
+    }
+    private int nextCandidateIndex
+    {
+        get => RecipeState.NextCandidateIndex;
+        set => RecipeState.NextCandidateIndex = value;
+    }
     private MealDbMealSummary? pendingAuthMeal;
     private string pendingAuthAction = "save";
     private const int PageSize = 20;
@@ -266,8 +301,8 @@
     private IEnumerable<EnrichedRecipeMatch> FilteredMatches => filterMode switch
     {
         _ when searchIngredientIds.Count == 0 => enrichedMatches,
-        RecipeFilter.PantryComplete => enrichedMatches.Where(m => m.Stats.CanMakeWithPantry),
-        RecipeFilter.SearchComplete => enrichedMatches.Where(m => m.Stats.CanMakeWithSearch),
+        recipe_suggestions.Models.RecipeFilter.PantryComplete => enrichedMatches.Where(m => m.Stats.CanMakeWithPantry),
+        recipe_suggestions.Models.RecipeFilter.SearchComplete => enrichedMatches.Where(m => m.Stats.CanMakeWithSearch),
         _ => enrichedMatches
     };
 
@@ -276,6 +311,20 @@
 
     protected override void OnInitialized()
     {
+        var currentIngredientQuery = IngredientQuery?.Trim() ?? string.Empty;
+        var currentFilterQuery = FilterQuery?.Trim().ToLowerInvariant() ?? string.Empty;
+
+        if (RecipeState.SearchStarted &&
+            RecipeState.IngredientQuery == currentIngredientQuery &&
+            RecipeState.FilterQuery == currentFilterQuery)
+        {
+            return;
+        }
+
+        RecipeState.Clear();
+        RecipeState.IngredientQuery = currentIngredientQuery;
+        RecipeState.FilterQuery = currentFilterQuery;
+
         if (!string.IsNullOrWhiteSpace(FilterQuery))
         {
             filterMode = FilterQuery.ToLowerInvariant() switch
@@ -288,11 +337,11 @@
 
         if (!string.IsNullOrWhiteSpace(IngredientQuery))
         {
-            searchIngredientIds = IngredientQuery
+            searchIngredientIds.Clear();
+            searchIngredientIds.AddRange(IngredientQuery
                 .Split(',', StringSplitOptions.RemoveEmptyEntries)
                 .Select(s => int.TryParse(s, out var id) ? id : 0)
-                .Where(id => id > 0)
-                .ToList();
+                .Where(id => id > 0));
         }
     }
 
@@ -316,15 +365,16 @@
             if (userId != null)
             {
                 var pantry = await Pantry.GetPantryIngredientsAsync(userId);
-                pantryNames = pantry.Select(i => i.Name).ToList();
-                favoritedMealIds = Db.SavedRecipes
+                RecipeState.PantryNames.Clear();
+                RecipeState.PantryNames.AddRange(pantry.Select(i => i.Name));
+                RecipeState.FavoritedMealIds.Clear();
+                RecipeState.FavoritedMealIds.UnionWith(Db.SavedRecipes
                     .Where(r => r.UserId == userId && r.IsFavorite && r.MealDbId != null)
-                    .Select(r => r.MealDbId!)
-                    .ToHashSet();
-                savedMealIds = Db.SavedRecipes
+                    .Select(r => r.MealDbId!));
+                RecipeState.SavedMealIds.Clear();
+                RecipeState.SavedMealIds.UnionWith(Db.SavedRecipes
                     .Where(r => r.UserId == userId && r.MealDbId != null)
-                    .Select(r => r.MealDbId!)
-                    .ToHashSet();
+                    .Select(r => r.MealDbId!));
             }
         }
         if (searchIngredientIds.Count == 0)
@@ -332,10 +382,17 @@
             loadingProgress = "Loading recipes to browse...";
             StateHasChanged();
 
-            var browseMeals = await MealDb.GetBrowseRecipesAsync();
-            recipeCandidates = browseMeals
-                .Select(meal => new EnrichedRecipeMatch { Meal = meal })
-                .ToList();
+            var browseMeals = RecipeState.BrowseRecipesCache.Any()
+                ? RecipeState.BrowseRecipesCache
+                : await MealDb.GetBrowseRecipesAsync();
+
+            if (!RecipeState.BrowseRecipesCache.Any())
+                RecipeState.BrowseRecipesCache.AddRange(browseMeals);
+
+            recipeCandidates.Clear();
+            recipeCandidates.AddRange(browseMeals
+                .Select(meal => new EnrichedRecipeMatch { Meal = meal }));
+
             nextCandidateIndex = 0;
             await HydrateNextBatchAsync(PageSize);
             isLoading = false;
@@ -347,12 +404,16 @@
             .Where(i => searchIngredientIds.Contains(i.Id))
             .ToList();
 
-        searchNames = searchIngredients.Select(i => i.Name).ToList();
+        RecipeState.SearchNames.Clear();
+        RecipeState.SearchNames.AddRange(searchIngredients.Select(i => i.Name));
 
         // For guests without a saved pantry, treat the selected ingredients as the pantry
         // so the have/buy counts are still meaningful.
         if (pantryNames.Count == 0)
-            pantryNames = searchNames.ToList();
+        {
+            RecipeState.PantryNames.Clear();
+            RecipeState.PantryNames.AddRange(RecipeState.SearchNames);
+        }
 
         loadingProgress = "Searching meals from TheMealDB...";
         StateHasChanged();
@@ -390,10 +451,10 @@
             }
         }
 
-        recipeCandidates = matchDictionary.Values
+        RecipeState.RecipeCandidates.Clear();
+        RecipeState.RecipeCandidates.AddRange(matchDictionary.Values
             .OrderByDescending(m => m.SearchHitCount)
-            .ThenBy(m => m.Meal.StrMeal)
-            .ToList();
+            .ThenBy(m => m.Meal.StrMeal));
         nextCandidateIndex = 0;
 
         loadingProgress = recipeCandidates.Count == 0
@@ -415,28 +476,35 @@
 
         nextCandidateIndex += batch.Count;
 
-        foreach (var candidate in batch)
+        var hydrateTasks = batch.Select(async candidate =>
         {
-            var detail = await MealDb.GetMealDetailsAsync(candidate.Meal.IdMeal);
-            candidate.Detail = detail;
-            if (detail != null)
+            candidate.Detail = await MealDb.GetMealDetailsAsync(candidate.Meal.IdMeal);
+            return candidate;
+        });
+
+        var hydratedCandidates = await Task.WhenAll(hydrateTasks);
+        var currentMatches = RecipeState.EnrichedMatches.ToList();
+
+        foreach (var candidate in hydratedCandidates)
+        {
+            if (candidate.Detail != null)
             {
-                candidate.Stats = RecipeMatchAnalyzer.Analyze(detail, pantryNames, searchNames);
-                enrichedMatches.Add(candidate);
+                candidate.Stats = RecipeMatchAnalyzer.Analyze(candidate.Detail, pantryNames, searchNames);
+                currentMatches.Add(candidate);
             }
         }
 
-        enrichedMatches = searchIngredientIds.Count == 0
-            ? enrichedMatches.OrderBy(m => m.Meal.StrMeal).ToList()
-            : enrichedMatches
+        RecipeState.EnrichedMatches.Clear();
+        RecipeState.EnrichedMatches.AddRange(searchIngredientIds.Count == 0
+            ? currentMatches.OrderBy(m => m.Meal.StrMeal)
+            : currentMatches
                 .OrderBy(m => m.Stats.BuyCount)
                 .ThenByDescending(m => m.Stats.HaveFromPantry)
-                .ThenBy(m => m.Meal.StrMeal)
-                .ToList();
+                .ThenBy(m => m.Meal.StrMeal));
 
-        allCount = enrichedMatches.Count;
-        pantryCompleteCount = enrichedMatches.Count(m => m.Stats.CanMakeWithPantry);
-        searchCompleteCount = enrichedMatches.Count(m => m.Stats.CanMakeWithSearch);
+        allCount = RecipeState.EnrichedMatches.Count;
+        pantryCompleteCount = currentMatches.Count(m => m.Stats.CanMakeWithPantry);
+        searchCompleteCount = currentMatches.Count(m => m.Stats.CanMakeWithSearch);
     }
 
     private async Task LoadMoreAsync()
@@ -454,10 +522,13 @@
 
     private void SortByTime()
     {
-        enrichedMatches = enrichedMatches
-            .OrderBy(GetEstimatedMinutes)
-            .ThenBy(m => m.Meal.StrMeal)
-            .ToList();
+        RecipeState.EnrichedMatches.Sort((x, y) =>
+        {
+            var first = GetEstimatedMinutes(x);
+            var second = GetEstimatedMinutes(y);
+            var compare = first.CompareTo(second);
+            return compare != 0 ? compare : string.CompareOrdinal(x.Meal.StrMeal, y.Meal.StrMeal);
+        });
     }
 
     private bool IsFavorited(string mealId) => favoritedMealIds.Contains(mealId);
@@ -605,13 +676,14 @@
 
     private void RefreshSavedRecipeState()
     {
-        favoritedMealIds = Db.SavedRecipes
+        RecipeState.FavoritedMealIds.Clear();
+        RecipeState.FavoritedMealIds.UnionWith(Db.SavedRecipes
             .Where(r => r.UserId == userId && r.IsFavorite && r.MealDbId != null)
-            .Select(r => r.MealDbId!)
-            .ToHashSet();
-        savedMealIds = Db.SavedRecipes
+            .Select(r => r.MealDbId!));
+        RecipeState.SavedMealIds.Clear();
+        RecipeState.SavedMealIds.UnionWith(Db.SavedRecipes
             .Where(r => r.UserId == userId && r.MealDbId != null)
-            .Select(r => r.MealDbId!)
-            .ToHashSet();
+            .Select(r => r.MealDbId!));
     }
+
 }

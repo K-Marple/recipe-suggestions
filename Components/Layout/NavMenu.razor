@@ -13,8 +13,6 @@
     <div class="sidebar-auth">
         <AuthorizeView>
             <Authorized>
-                <NavLink href="Account/Manage"><span class="nav-icon"><i class="bi bi-gear" aria-hidden="true"></i></span> Account</NavLink>
-
                 <form action="Account/Logout" method="post">
                     <AntiforgeryToken />
                     <input type="hidden" name="ReturnUrl" value="@currentUrl" />

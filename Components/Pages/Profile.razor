@@ -7,7 +7,6 @@
 @inject ApplicationDbContext Db
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthStateProvider
-@inject PantryService Pantry
 
 <PageTitle>Profile</PageTitle>
 
@@ -39,8 +38,8 @@
                         <h2>@displayName</h2>
                         <p>@email</p>
                         <a class="wire-btn secondary profile-edit-btn" href="/Account/Manage">
-                            <i class="bi bi-pencil-square" aria-hidden="true"></i>
-                            Edit Profile
+                            <i class="bi bi-gear" aria-hidden="true"></i>
+                            Manage account
                         </a>
                     </div>
                 </div>
@@ -61,32 +60,10 @@
                         <strong>@customIngredientCount</strong>
                         <span>Custom Ingredients</span>
                     </a>
-                    <a href="/recipes">
-                        <i class="bi bi-backpack2-fill" aria-hidden="true"></i>
-                        <strong>@recentRecipeCount</strong>
-                        <span>Recent Recipes</span>
-                    </a>
                 </section>
             </section>
 
             <section class="profile-content-grid">
-                <div>
-                    <h2 class="profile-section-title">Account</h2>
-                    <section class="profile-list-card">
-                        @foreach (var item in accountItems)
-                        {
-                            <a class="profile-list-row" href="@item.Href">
-                                <i class="bi @item.Icon" aria-hidden="true"></i>
-                                <span>
-                                    <strong>@item.Title</strong>
-                                    <small>@item.Description</small>
-                                </span>
-                                <i class="bi bi-chevron-right row-chevron" aria-hidden="true"></i>
-                            </a>
-                        }
-                    </section>
-                </div>
-
                 <div>
                     <h2 class="profile-section-title">Your Activity</h2>
                     <section class="profile-list-card activity-card">
@@ -132,26 +109,13 @@
 
     private int savedCount;
     private int favoriteCount;
-    private int pantryCount;
     private int customIngredientCount;
-    private int recentRecipeCount;
-
-    private readonly List<ProfileListItem> accountItems =
-    [
-        new("bi-person", "Personal Information", "Update your name, email, and password", "/Account/Manage"),
-        new("bi-gear", "Preferences", "Manage your app preferences", "/Account/Manage"),
-        new("bi-magic", "Dietary Preferences", "Set your dietary restrictions and allergies", "/ingredients"),
-        new("bi-rulers", "Units & Measurements", "Choose your preferred units", "/Account/Manage"),
-        new("bi-bell", "Notifications", "Manage email and push notifications", "/Account/Manage/Email"),
-        new("bi-shield-lock", "Privacy & Security", "Control your privacy and data", "/Account/Manage/PersonalData")
-    ];
 
     private IEnumerable<ProfileActivityItem> ActivityItems =>
     [
         new("bi-bookmark", "Saved Recipes", "View all your saved recipes", savedCount, "/savedrecipes"),
         new("bi-heart", "Favorite Recipes", "Recipes you've marked as favorite", favoriteCount, "/savedrecipes?tab=favorites"),
-        new("bi-leaf", "Custom Ingredients", "Ingredients you've added", customIngredientCount, "/ingredients"),
-        new("bi-clock-history", "Recently Viewed", "Recipes you viewed recently", recentRecipeCount, "/recipes")
+        new("bi-leaf", "Custom Ingredients", "Ingredients you've added", customIngredientCount, "/ingredients")
     ];
 
     protected override async Task OnInitializedAsync()
@@ -180,9 +144,7 @@
 
         savedCount = Db.SavedRecipes.Count(r => r.UserId == userId);
         favoriteCount = Db.SavedRecipes.Count(r => r.UserId == userId && r.IsFavorite);
-        pantryCount = await Pantry.GetPantryCountAsync(userId);
         customIngredientCount = Db.Ingredients.Count(i => i.CreatedByUserId == userId && !i.IsDefault);
-        recentRecipeCount = Math.Min(15, Math.Max(savedCount, pantryCount));
     }
 
     private static string GetDisplayName(string value)
@@ -195,6 +157,5 @@
             .Select(part => char.ToUpperInvariant(part[0]) + part[1..].ToLowerInvariant()));
     }
 
-    private record ProfileListItem(string Icon, string Title, string Description, string Href);
     private record ProfileActivityItem(string Icon, string Title, string Description, int Count, string Href);
 }

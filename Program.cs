@@ -35,6 +35,7 @@ builder.Services.AddHttpClient<IngredientCatalogService>(client =>
 });
 
 builder.Services.AddScoped<PantryService>();
+builder.Services.AddScoped<RecipeSearchState>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>

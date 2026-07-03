@@ -1,22 +1,35 @@
 :root {
-    --bg: #F8F9FA;
+    --bg: #F8F4EE;
     --surface: #ffffff;
-    --surface-soft: #f4f7f6;
-    --text: #111827;
-    --muted: #64748b;
-    --border: #dfe5ea;
-    --border-dark: #cbd5df;
-    --primary: #1B5E20;
-    --primary-hover: #145018;
-    --accent: #E8F5E9;
-    --success: #2f855a;
+    --surface-soft: #f8efe3;
+    --text: #1f1a16;
+    --muted: #755847;
+    --border: #e5d6c6;
+    --border-dark: #d4b9a2;
+    --primary: #8b5e34;
+    --primary-hover: #6d4426;
+    --accent: #f6e3d0;
+    --success: #a75d23;
     --danger: #b42318;
     --warning: #b7791f;
     --radius: 10px;
     --radius-sm: 8px;
-    --shadow: 0 16px 45px rgba(15, 23, 42, 0.08);
-    --shadow-sm: 0 4px 14px rgba(15, 23, 42, 0.06);
+    --shadow: 0 16px 45px rgba(31, 23, 18, 0.1);
+    --shadow-sm: 0 4px 14px rgba(31, 23, 18, 0.08);
 }
+
+:root {
+    --app-brown: #8b5e34;
+    --app-brown-dark: #6d4426;
+    --app-brown-soft: #f6e3d0;
+    --app-ink: #1f1a16;
+    --app-text: #4f4339;
+    --app-muted: #7d6b61;
+    --app-line: #e5d6c6;
+    --app-soft: #fbf5ef;
+    --app-card-shadow: 0 8px 22px rgba(31, 23, 18, 0.06);
+}
+
 
 /* Reset */
 * {
@@ -947,24 +960,42 @@ body {
     padding: 22px;
 }
 
+.saved-screen .page-heading {
+    align-items: center;
+}
+
+.saved-screen .recipe-meta-row {
+    margin: 8px 0 0;
+    gap: 10px;
+}
+
+.saved-screen .recipe-meta-row span {
+    padding: 6px 12px;
+    font-size: 0.84rem;
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+}
+
 .page-heading,
-.ingredients-header {
+.ingredients-header,
+.saved-screen .page-heading {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
-    gap: 18px;
+    gap: 16px;
     border: 0;
     box-shadow: none;
     padding: 0;
     background: transparent;
-    margin-bottom: 4px;
+    margin-bottom: 10px;
 }
 
 .page-heading h1,
 .ingredients-header h1,
+.saved-screen .page-heading h1,
 .wireframe-section h1,
 .recipe-detail-info h1 {
-    margin: 0 0 6px;
+    margin: 0;
     font-size: 1.7rem;
     line-height: 1.15;
     letter-spacing: -0.03em;
@@ -973,6 +1004,7 @@ body {
 
 .page-heading p,
 .ingredients-header p,
+.saved-screen .page-heading p,
 .wireframe-section p,
 .hero-description {
     margin: 0;
@@ -1449,14 +1481,33 @@ a.wire-card:hover {
 }
 
 .icon-button {
-    min-width: 34px;
-    min-height: 34px;
-    border: 1px solid var(--border-dark);
-    border-radius: 7px;
+    min-width: 42px;
+    min-height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
     background: #fff;
-    color: #334155;
+    color: var(--app-text);
     display: inline-grid;
     place-items: center;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.icon-button:hover {
+    background: var(--app-soft);
+    border-color: var(--app-line);
+    transform: translateY(-1px);
+}
+
+.icon-button.favorited {
+    color: #b42318;
+    border-color: #fcb4b4;
+    background: #fff1f1;
+}
+
+.icon-button.saved {
+    color: var(--app-brown-dark);
+    border-color: #f1d6c0;
+    background: #fbefe6;
 }
 
 /* Details */
@@ -1501,18 +1552,33 @@ a.wire-card:hover {
 /* Saved recipes */
 .saved-screen .recipe-wire-card {
     grid-template-columns: 96px minmax(0, 1fr);
+    gap: 18px;
+    padding: 18px;
+    background: #fff;
+    border: 1px solid var(--app-line);
+    border-radius: 16px;
 }
 
 .saved-screen .recipe-card-image {
-    height: 78px;
+    height: 96px;
+    width: 96px;
+    object-fit: cover;
+    border-radius: 14px;
 }
 
-.saved-screen .button-row {
-    gap: 8px;
+.saved-screen .recipe-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
 }
 
 .saved-screen .wire-btn {
-    min-height: 32px;
+    min-height: 36px;
+}
+
+.saved-screen .recipe-card-body {
+    padding: 0;
 }
 
 /* Profile */
@@ -1825,7 +1891,11 @@ a:focus:not(:focus-visible) {
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
-    margin-top: 8px;
+    margin-top: 12px;
+}
+
+.saved-screen .recipe-card-actions {
+    justify-content: flex-start;
 }
 
 .icon-button.favorited {
@@ -2274,7 +2344,7 @@ body {
 }
 
 .wireframe-hero {
-    background: linear-gradient(135deg, #ffffff 0%, #f0faf3 100%);
+    background: var(--app-brown-soft);
     border-radius: var(--radius);
     margin: 0 0 8px;
 }
@@ -2332,8 +2402,8 @@ body {
     height: 28px;
     border: 0;
     border-radius: 8px;
-    background: #e9f8ef;
-    color: #0f8a4b;
+    background: var(--app-brown-soft);
+    color: var(--app-brown-dark);
     font-size: 1rem;
 }
 
@@ -2346,7 +2416,7 @@ body {
     width: 15px;
     height: 20px;
     border-radius: 90% 12% 90% 12%;
-    background: linear-gradient(135deg, #16a34a, #0f7a43);
+    background: linear-gradient(135deg, var(--app-brown), var(--app-brown-dark));
     transform: rotate(42deg);
     box-shadow: inset -3px -3px 0 rgba(255, 255, 255, 0.22);
 }
@@ -2355,12 +2425,12 @@ body {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #10b981;
+    background: var(--app-brown);
     margin-left: 8px;
 }
 
 .app-label-text {
-    color: #0f8a4b;
+    color: var(--app-brown);
     font-size: 0.78rem;
     font-weight: 900;
 }
@@ -2369,6 +2439,17 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
+}
+
+.topbar-profile-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 1px solid var(--app-line);
+    background: #fff;
 }
 
 .saved-link {
@@ -2423,11 +2504,10 @@ body {
 
 .sidebar-nav a.active,
 .sidebar-auth a.active {
-    background: #edf8f1;
-    color: #0f7a43;
-    border-color: #edf8f1;
+        background: #f6e3d0;
+        color: var(--app-brown-dark);
+        border-color: #f6e3d0;
 }
-
 .nav-icon,
 .sidebar-nav a.active .nav-icon i,
 .sidebar-auth a.active .nav-icon i {
@@ -2449,12 +2529,8 @@ body {
     align-items: start;
     padding: 56px 44px 30px;
     background:
-        linear-gradient(135deg, rgba(233, 248, 239, 0.86), rgba(255, 255, 255, 0.94)),
-        radial-gradient(circle at 82% 18%, rgba(8, 123, 61, 0.12), transparent 28%);
-    border: 1px solid #dfe8f1;
-    border-radius: 16px;
-    margin: 0;
-    min-height: 330px;
+            linear-gradient(135deg, rgba(246, 227, 208, 0.86), rgba(255, 255, 255, 0.94)),
+            radial-gradient(circle at 82% 18%, rgba(139, 94, 52, 0.12), transparent 28%);
 }
 
 .hero-copy h1 {
@@ -2474,7 +2550,7 @@ body {
     min-height: 300px;
     border-radius: 50%;
     background:
-        radial-gradient(circle at 50% 56%, rgba(15, 122, 67, 0.10) 0 44%, transparent 45%),
+        radial-gradient(circle at 50% 56%, rgba(139, 94, 52, 0.10) 0 44%, transparent 45%),
         radial-gradient(circle at 42% 52%, #ffffff 0 34%, transparent 35%);
 }
 
@@ -2492,15 +2568,15 @@ body {
 .wire-btn.primary,
 .btn-dark,
 .btn-primary {
-    background: #087b3d;
-    border-color: #087b3d;
+    background: var(--app-brown);
+    border-color: var(--app-brown);
 }
 
 .wire-btn.primary:hover,
 .btn-dark:hover,
 .btn-primary:hover {
-    background: #066b35;
-    border-color: #066b35;
+    background: var(--app-brown-dark);
+    border-color: var(--app-brown-dark);
 }
 
 .wire-card-grid {
@@ -2531,7 +2607,7 @@ body {
 
 a.wire-card:hover {
     transform: translateY(-3px);
-    border-color: #b8dec5;
+    border-color: #d8b7a0;
     box-shadow: 0 18px 38px rgba(15, 23, 42, 0.09);
 }
 
@@ -2540,13 +2616,13 @@ a.wire-card:hover {
     height: 46px;
     margin: 0 0 8px;
     border-radius: 12px;
-    background: #e9f8ef;
+    background: var(--app-brown-soft);
     display: grid;
     place-items: center;
 }
 
 .feature-icon i {
-    color: #087b3d;
+    color: var(--app-brown);
     font-size: 1.35rem;
 }
 
@@ -2583,8 +2659,8 @@ a.wire-card:hover {
 
 .tab-pill.active {
     background: transparent;
-    color: #087b3d;
-    box-shadow: inset 0 -2px 0 #087b3d;
+    color: var(--app-brown);
+    box-shadow: inset 0 -2px 0 var(--app-brown);
 }
 
 .catalog-grid {
@@ -2599,9 +2675,9 @@ a.wire-card:hover {
 }
 
 .catalog-card.in-pantry {
-    background: #fbfffc;
-    border-color: #0f8a4b;
-    box-shadow: inset 0 0 0 1px #0f8a4b, 0 10px 26px rgba(15, 23, 42, 0.045);
+    background: #fff5ee;
+    border-color: #d8b7a0;
+    box-shadow: inset 0 0 0 1px #d8b7a0, 0 10px 26px rgba(31, 23, 18, 0.045);
 }
 
 .recipe-wire-card {
@@ -2649,8 +2725,8 @@ a.wire-card:hover {
 
 .match-badge.full,
 .match-stat.ready {
-    background: #e9f8ef;
-    color: #087b3d;
+    background: var(--app-brown-soft);
+    color: var(--app-brown-dark);
 }
 
 .icon-button.favorited {
@@ -2672,15 +2748,15 @@ a.wire-card:hover {
 
 .ingredient-tag.have,
 .match-stat.have {
-    background: #e9f8ef;
-    color: #087b3d;
+    background: var(--app-brown-soft);
+    color: var(--app-brown-dark);
 }
 
 .guide-note,
 .guest-banner {
-    background: #eef9f1;
-    color: #0f7a43;
-    border-color: #d2edd9;
+    background: #fbefe3;
+    color: #7d5639;
+    border-color: #e8d3c6;
 }
 
 .profile-grid {
@@ -2693,8 +2769,8 @@ a.wire-card:hover {
 }
 
 .stat-icon-wrap {
-    background: #e9f8ef;
-    color: #087b3d;
+    background: var(--app-brown-soft);
+    color: var(--app-brown-dark);
 }
 
 @media (max-width: 900px) {
@@ -2777,19 +2853,19 @@ a.wire-card:hover {
 
 .guest-banner.warning {
     align-items: flex-start;
-    background: #fffbeb;
-    border-color: #facc15;
-    color: #713f12;
+    background: #fff2e6;
+    border-color: #f5c6a0;
+    color: #7d5639;
 }
 
 .guest-banner.warning i {
-    color: #d97706;
+    color: #b7791f;
     font-size: 1rem;
     margin-top: 1px;
 }
 
 .guest-banner.warning a {
-    color: #713f12;
+    color: #7d5639;
 }
 
 .pantry-screen .pantry-mode-tabs {
@@ -2810,8 +2886,7 @@ a.wire-card:hover {
 
 .pantry-screen .tab-pill.active {
     background: #fff;
-    color: #087b3d;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+        color: var(--app-brown-dark);
 }
 
 .pantry-toolbar {
@@ -2835,7 +2910,7 @@ a.wire-card:hover {
 }
 
 .pantry-hint i {
-    color: #087b3d;
+        color: var(--app-brown-dark);
 }
 
 .pantry-list-section {
@@ -2869,10 +2944,8 @@ a.wire-card:hover {
 .pantry-row-main input[type="checkbox"]:focus-visible,
 .category-chip:focus-visible,
 .catalog-card .wire-btn:focus-visible {
-    outline: 3px solid rgba(8, 123, 61, 0.22);
-    outline-offset: 2px;
+        outline: 3px solid rgba(139, 94, 52, 0.22);
 }
-
 .pantry-item-name {
     color: #172033;
 }
@@ -2894,9 +2967,9 @@ a.wire-card:hover {
 
 .category-chip:hover,
 .category-chip.active {
-    background: #e9f8ef;
-    border-color: #b8dec5;
-    color: #087b3d;
+    background: #f6e3d0;
+    border-color: #d8b7a0;
+    color: var(--app-brown-dark);
 }
 
 .catalog-grid {
@@ -2942,8 +3015,8 @@ a.wire-card:hover {
     gap: 6px;
     padding: 7px 10px;
     border-radius: 999px;
-    background: #e9f8ef;
-    color: #087b3d;
+    background: var(--app-brown-soft);
+    color: var(--app-brown-dark);
 }
 
 .sticky-action-bar {
@@ -3085,9 +3158,9 @@ a.wire-card:hover {
 }
 
 .category-tab.active {
-    background: #edf8f1;
-    border-bottom-color: #108a4b;
-    color: #087b3d;
+    background: #f6e3d0;
+    border-bottom-color: var(--app-brown);
+    color: var(--app-brown-dark);
 }
 
 .ingredient-tile-grid {
@@ -3113,14 +3186,14 @@ a.wire-card:hover {
 }
 
 .ingredient-tile:hover {
-    border-color: #b8dec5;
+    border-color: #d8b7a0;
     box-shadow: 0 12px 24px rgba(15, 23, 42, 0.07);
 }
 
 .ingredient-tile.selected {
-    border-color: #108a4b;
-    background: #fbfffc;
-    box-shadow: inset 0 0 0 1px #108a4b, 0 10px 24px rgba(15, 23, 42, 0.045);
+    border-color: #d8b7a0;
+    background: #fff2e6;
+    box-shadow: inset 0 0 0 1px #d8b7a0, 0 10px 24px rgba(15, 23, 42, 0.045);
 }
 
 .tile-check {
@@ -3132,7 +3205,7 @@ a.wire-card:hover {
     display: grid;
     place-items: center;
     border-radius: 50%;
-    background: #108a4b;
+    background: var(--app-brown);
     color: #fff;
     font-size: 0.78rem;
 }
@@ -3179,16 +3252,8 @@ a.wire-card:hover {
     border: 1px solid #dfe8d8;
     border-radius: 9px;
     background: #fbfdf6;
-    color: #087b3d;
-    font-size: 0.9rem;
-    font-weight: 800;
+    color: var(--app-brown-dark);
 }
-
-.pantry-tip i {
-    color: #d8a500;
-    font-size: 1.25rem;
-}
-
 .selected-pantry-panel {
     position: sticky;
     top: 24px;
@@ -3282,10 +3347,7 @@ a.wire-card:hover {
 .quick-add-row input {
     width: 17px;
     height: 17px;
-    accent-color: #108a4b;
-}
-
-.quick-add-row.disabled {
+        accent-color: var(--app-brown);
     opacity: 0.45;
 }
 
@@ -3411,17 +3473,12 @@ a.wire-card:hover {
     display: flex;
     align-items: center;
     gap: 22px;
-    color: #087b3d;
-    font-size: 0.9rem;
-}
-
-.selected-filter-row strong {
+        color: var(--app-brown-dark);
     font-weight: 950;
 }
 
 .selected-filter-row a {
-    color: #087b3d;
-    font-weight: 850;
+        color: var(--app-brown-dark);
     text-decoration: underline;
 }
 
@@ -3449,33 +3506,21 @@ a.wire-card:hover {
 }
 
 .filter-select.active {
-    color: #087b3d;
-}
+        color: var(--app-brown-dark);
+    }
 
 .filter-button {
-    justify-content: center;
-    margin-left: auto;
-    width: 100%;
-}
+        justify-content: center;
+        margin-left: auto;
+        width: 100%;
+    }
 
 .browse-heading {
-    display: grid;
-    gap: 4px;
-    padding-top: 4px;
-}
-
-.browse-heading h2 {
-    margin: 0;
-    color: #050b1f;
-    font-size: 1.2rem;
-    font-weight: 950;
-}
-
-.browse-heading p {
-    margin: 0;
-    color: #42526b;
-    font-size: 0.92rem;
-}
+        display: grid;
+        gap: 4px;
+        padding-top: 4px;
+        font-size: 0.92rem;
+    }
 
 .recipe-suggestion-list {
     display: grid;
@@ -3528,7 +3573,7 @@ a.wire-card:hover {
     left: 9px;
     padding: 6px 9px;
     border-radius: 7px;
-    background: #108a4b;
+    background: var(--app-brown);
     color: #fff;
     font-size: 0.78rem;
     font-weight: 950;
@@ -3585,8 +3630,8 @@ a.wire-card:hover {
 .suggestion-tags span {
     padding: 6px 12px;
     border-radius: 7px;
-    background: #e9f5ed;
-    color: #087b3d;
+    background: var(--app-brown-soft);
+    color: var(--app-brown-dark);
     font-size: 0.78rem;
     font-weight: 850;
 }
@@ -3613,7 +3658,7 @@ a.wire-card:hover {
 }
 
 .recipe-icon-button.saved {
-    color: #087b3d;
+    color: var(--app-brown);
 }
 
 .recipe-auth-modal {
@@ -3785,37 +3830,20 @@ a.wire-card:hover {
 }
 
 .auth-input-wrap .form-control:focus {
-    border-color: #108a4b;
-    box-shadow: 0 0 0 4px rgba(16, 138, 75, 0.12);
-}
-
-.auth-form-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    margin-top: -4px;
-}
-
-.auth-checkbox {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    color: #42526b;
-    font-size: 0.82rem;
-    font-weight: 750;
+    border-color: var(--app-brown);
+    box-shadow: 0 0 0 4px rgba(149, 76, 20, 0.12);
 }
 
 .auth-checkbox input {
     width: 16px;
     height: 16px;
-    accent-color: #108a4b;
+    accent-color: var(--app-brown);
 }
 
 .auth-form-row a,
 .auth-switch a,
 .auth-secondary-actions a {
-    color: #087b3d;
+    color: var(--app-brown-dark);
     font-size: 0.84rem;
     font-weight: 900;
     text-decoration: none;
@@ -3831,16 +3859,16 @@ a.wire-card:hover {
     width: 100%;
     min-height: 48px;
     margin-top: 4px;
-    border: 1px solid #108a4b;
+    border: 1px solid var(--app-brown);
     border-radius: 8px;
-    background: linear-gradient(135deg, #108a4b, #2f7f35);
+    background: linear-gradient(135deg, var(--app-brown), var(--app-brown-dark));
     color: #fff;
     font-size: 0.94rem;
     font-weight: 950;
 }
 
 .auth-submit:hover {
-    background: linear-gradient(135deg, #087b3d, #256d2f);
+    background: linear-gradient(135deg, var(--app-brown-dark), #7f5032);
 }
 
 .auth-secondary-actions {
@@ -3933,9 +3961,9 @@ a.wire-card:hover {
     align-items: center;
     justify-content: center;
     padding: 8px 18px;
-    border: 1px solid #108a4b;
+    border: 1px solid var(--app-brown);
     border-radius: 8px;
-    background: #108a4b;
+    background: var(--app-brown);
     color: #fff;
     font-size: 0.9rem;
     font-weight: 900;
@@ -3943,8 +3971,8 @@ a.wire-card:hover {
 }
 
 .topbar-login-button:hover {
-    background: #087b3d;
-    border-color: #087b3d;
+    background: var(--app-brown-dark);
+    border-color: var(--app-brown-dark);
     color: #fff;
     text-decoration: none;
 }
@@ -3974,7 +4002,7 @@ a.wire-card:hover {
 }
 
 .detail-back-link:hover {
-    color: #087b3d;
+    color: var(--app-brown-dark);
 }
 
 .detail-hero-grid {
@@ -4035,8 +4063,8 @@ a.wire-card:hover {
 .match-percent-pill {
     padding: 7px 12px;
     border-radius: 8px;
-    background: #dff3e6;
-    color: #087b3d;
+    background: var(--app-brown-soft);
+    color: var(--app-brown-dark);
     font-weight: 950;
 }
 
@@ -4057,8 +4085,8 @@ a.wire-card:hover {
 .detail-tag-row span {
     padding: 7px 11px;
     border-radius: 7px;
-    background: #e9f5ed;
-    color: #087b3d;
+    background: var(--app-brown-soft);
+    color: var(--app-brown-dark);
     font-size: 0.78rem;
     font-weight: 850;
 }
@@ -4160,7 +4188,7 @@ a.wire-card:hover {
 
 .detail-ingredient-list li {
     display: grid;
-    grid-template-columns: 22px minmax(0, 1fr);
+    grid-template-columns: 26px minmax(0, 1fr);
     align-items: start;
     gap: 10px;
     color: #172033;
@@ -4169,19 +4197,20 @@ a.wire-card:hover {
 }
 
 .ingredient-status {
-    width: 18px;
-    height: 18px;
+    width: 24px;
+    height: 24px;
     display: grid;
     place-items: center;
-    color: #b7c2ce;
-    font-size: 1rem;
+    border-radius: 50%;
+    color: #fff;
+    background: var(--app-brown);
+    font-size: 0.95rem;
 }
 
-.detail-ingredient-list li.have .ingredient-status {
-    border-radius: 50%;
-    background: #108a4b;
-    color: #fff;
-    font-size: 0.72rem;
+.detail-ingredient-list li.need .ingredient-status {
+    background: #fff;
+    border: 1px solid #dbe5ef;
+    color: var(--app-brown);
 }
 
 .detail-instructions-panel h2 {
@@ -4209,22 +4238,16 @@ a.wire-card:hover {
 }
 
 .detail-instruction-list li > span {
-    width: 18px;
-    height: 18px;
+    width: 26px;
+    height: 26px;
     display: grid;
     place-items: center;
     border-radius: 50%;
-    background: #108a4b;
-    color: #fff;
-    font-size: 0.68rem;
-    font-weight: 950;
-}
-
-.detail-instruction-list p {
+    background: var(--app-brown);
     margin: -1px 0 0;
-    color: #24324a;
-    font-size: 0.9rem;
-    line-height: 1.55;
+    color: #fff;
+    font-size: 0.92rem;
+    line-height: 1;
 }
 
 .detail-stats-card {
@@ -4265,7 +4288,7 @@ a.wire-card:hover {
 }
 
 .detail-stats-card .bi-leaf {
-    color: #108a4b;
+        color: var(--app-brown);
 }
 
 .detail-stats-card strong {
@@ -4283,27 +4306,26 @@ a.wire-card:hover {
     gap: 14px;
     padding: 20px;
     border-radius: 8px;
-    background: #f1f7f1;
-    max-width: 760px;
+    background: #eaf5e9;
+    width: 100%;
 }
 
 .cooking-tip-card > i {
-    color: #d6a500;
-    font-size: 1.45rem;
+    color: var(--app-brown-dark);
+    font-size: 1.35rem;
 }
 
 .cooking-tip-card h2 {
-    margin: 0 0 8px;
-    color: #087b3d;
+    margin: 0 0 6px;
+    color: var(--app-brown-dark);
     font-size: 1rem;
-    font-weight: 950;
 }
 
 .cooking-tip-card p {
     margin: 0;
     color: #42526b;
-    font-size: 0.9rem;
-    line-height: 1.45;
+    font-size: 0.88rem;
+    line-height: 1.55;
 }
 
 @media (max-width: 1180px) {
@@ -4391,7 +4413,7 @@ a.wire-card:hover {
 
 .profile-top-row {
     display: grid;
-    grid-template-columns: 470px minmax(0, 1fr);
+    grid-template-columns: minmax(320px, 1fr) minmax(320px, 1.4fr);
     gap: 28px;
 }
 
@@ -4408,29 +4430,34 @@ a.wire-card:hover {
     display: grid;
     grid-template-columns: 118px minmax(0, 1fr);
     align-items: center;
-    gap: 28px;
+    gap: 24px;
     min-height: 178px;
-    padding: 28px 34px;
+    padding: 28px 32px;
+}
+
+.profile-identity-card {
+    background: var(--app-soft);
 }
 
 .profile-avatar {
     width: 108px;
     height: 108px;
     display: grid;
-    place-items: end center;
+    place-items: center;
     overflow: hidden;
     border-radius: 50%;
-    background:
-        radial-gradient(circle at 50% 40%, #36556a 0 17%, transparent 18%),
-        radial-gradient(circle at 50% 96%, #253246 0 36%, transparent 37%),
-        #d8f1df;
-    color: transparent;
+    background: #f6f0ea;
+    color: var(--app-brown-dark);
+}
+
+.profile-avatar i {
+    font-size: 2.4rem;
 }
 
 .profile-identity-card h2 {
     margin: 0 0 10px;
-    color: #050b1f;
-    font-size: 1.55rem;
+    color: #1f1a16;
+    font-size: 1.75rem;
     font-weight: 950;
 }
 
@@ -4444,10 +4471,11 @@ a.wire-card:hover {
     width: fit-content;
     min-height: 38px;
     gap: 9px;
-    padding: 8px 16px;
-    border-radius: 7px;
+    padding: 10px 18px;
+    border-radius: 12px;
     font-size: 0.9rem;
     font-weight: 900;
+    border-color: var(--app-line);
 }
 
 .profile-stats-strip {
@@ -4472,19 +4500,19 @@ a.wire-card:hover {
 }
 
 .profile-stats-strip i {
-    color: #108a4b;
+    color: var(--app-brown-dark);
     font-size: 2rem;
 }
 
 .profile-stats-strip strong {
-    color: #050b1f;
+    color: var(--app-ink);
     font-size: 1.85rem;
     font-weight: 950;
     line-height: 1;
 }
 
 .profile-stats-strip span {
-    color: #24324a;
+    color: var(--app-text);
     font-size: 0.9rem;
     font-weight: 850;
     text-align: center;
@@ -4506,18 +4534,19 @@ a.wire-card:hover {
 
 .profile-list-card {
     overflow: hidden;
-    padding: 0 24px;
+    padding: 0;
 }
 
 .profile-list-row {
     display: grid;
-    grid-template-columns: 34px minmax(0, 1fr) 24px;
+    grid-template-columns: 34px minmax(0, 1fr) auto 24px;
     align-items: center;
     gap: 16px;
-    min-height: 77px;
-    color: #172033;
+    min-height: 76px;
+    color: #1f1a16;
     text-decoration: none;
-    border-bottom: 1px solid #e5edf5;
+    border-bottom: 1px solid #f0e3d6;
+    padding: 0 24px;
 }
 
 .activity-card .profile-list-row {
@@ -4528,8 +4557,12 @@ a.wire-card:hover {
     border-bottom: 0;
 }
 
+.activity-card .profile-list-row {
+    grid-template-columns: 34px minmax(0, 1fr) auto 24px;
+}
+
 .profile-list-row > i:first-child {
-    color: #1f3150;
+    color: var(--app-brown-dark);
     font-size: 1.25rem;
 }
 
@@ -4552,11 +4585,11 @@ a.wire-card:hover {
 
 .profile-list-row em {
     min-width: 32px;
-    padding: 6px 9px;
-    border-radius: 7px;
-    background: #dff3e6;
-    color: #087b3d;
-    font-size: 0.8rem;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: #f4e1d2;
+    color: var(--app-brown-dark);
+    font-size: 0.82rem;
     font-style: normal;
     font-weight: 950;
     text-align: center;
@@ -4657,14 +4690,14 @@ a.wire-card:hover {
 
 /* Unified UI pass */
 :root {
-    --app-green: #108a4b;
-    --app-green-dark: #087b3d;
+    --app-green: var(--app-brown);
+    --app-green-dark: var(--app-brown-dark);
     --app-ink: #050b1f;
     --app-text: #24324a;
     --app-muted: #64748b;
     --app-line: #dfe8f1;
     --app-soft: #f7fafc;
-    --app-green-soft: #e9f5ed;
+    --app-green-soft: var(--app-brown-soft);
     --app-card-shadow: 0 8px 22px rgba(15, 23, 42, 0.045);
 }
 
@@ -4718,8 +4751,8 @@ a.wire-card:hover {
 .find-recipes-button,
 .view-recipe-btn,
 .pantry-add-button {
-    background: var(--app-green);
-    border-color: var(--app-green);
+    background: var(--app-brown);
+    border-color: var(--app-brown);
     color: #fff;
 }
 
@@ -4729,8 +4762,8 @@ a.wire-card:hover {
 .find-recipes-button:hover,
 .view-recipe-btn:hover,
 .pantry-add-button:hover {
-    background: var(--app-green-dark);
-    border-color: var(--app-green-dark);
+    background: var(--app-brown-dark);
+    border-color: var(--app-brown-dark);
 }
 
 .wire-btn.secondary,
@@ -4768,8 +4801,8 @@ a.wire-card:hover {
 .profile-list-row em,
 .match-badge.full,
 .match-stat.ready {
-    background: var(--app-green-soft);
-    color: var(--app-green-dark);
+    background: var(--app-brown-soft);
+    color: var(--app-brown-dark);
 }
 
 .ingredient-tile-grid {
@@ -4795,8 +4828,8 @@ a.wire-card:hover {
 
 .ingredient-tile.selected {
     background: #fbfffc;
-    border-color: var(--app-green);
-    box-shadow: inset 0 0 0 1px var(--app-green);
+    border-color: var(--app-brown);
+    box-shadow: inset 0 0 0 1px var(--app-brown);
 }
 
 .tile-name {
@@ -4818,8 +4851,8 @@ a.wire-card:hover {
 }
 
 .ingredient-tile.selected .tile-category {
-    background: var(--app-green-soft);
-    color: var(--app-green-dark);
+    background: var(--app-brown-soft);
+    color: var(--app-brown-dark);
 }
 
 .tile-emoji,
@@ -4932,7 +4965,7 @@ a.wire-card:hover {
 }
 
 .simple-category-title i {
-    color: var(--app-green);
+    color: var(--app-brown);
     font-size: 0.9rem;
 }
 
@@ -4948,8 +4981,8 @@ a.wire-card:hover {
 .simple-category-selected {
     padding: 3px 8px;
     border-radius: 999px;
-    background: #e7f6eb;
-    color: var(--app-green-dark);
+    background: var(--app-brown-soft);
+    color: var(--app-brown-dark);
 }
 
 .simple-category-items {
@@ -4977,7 +5010,7 @@ a.wire-card:hover {
 }
 
 .simple-ingredient-row.selected {
-    border-color: var(--app-green);
+    border-color: var(--app-brown);
     background: #fbfffc;
 }
 
@@ -4990,7 +5023,7 @@ a.wire-card:hover {
 }
 
 .simple-ingredient-row i {
-    color: var(--app-green);
+    color: var(--app-brown);
     font-size: 1rem;
 }
 
@@ -5133,8 +5166,7 @@ a.wire-card:hover {
 }
 
 .summary-value {
-    color: #087b3d;
-    font-size: 1.15rem;
+        color: var(--app-brown-dark);
     font-weight: 950;
 }
 
