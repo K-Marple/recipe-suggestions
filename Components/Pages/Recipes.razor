@@ -1,0 +1,459 @@
+@page "/recipes"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using recipe_suggestions.Data
+@using recipe_suggestions.Models
+@using Microsoft.JSInterop
+@using recipe_suggestions.Services
+@inject MealDbService MealDb
+@inject PantryService Pantry
+@inject ApplicationDbContext Db
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<PageTitle>Recipe Suggestions</PageTitle>
+
+<div class="wireframe-page compact-page recipes-screen">
+
+    <section class="wireframe-section page-heading recipes-hero">
+        <div>
+            <h1>Recipe Suggestions</h1>
+            <p>Recipes matched using your selected ingredients.</p>
+        </div>
+        <div class="recipe-top-actions">
+            <button type="button" class="wire-btn dark-pill" @onclick="() => SetFilter(RecipeFilter.SearchComplete)">Match All Items</button>
+            <a class="wire-btn secondary pill-action" href="@EditPantryUrl">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                Add Missing
+            </a>
+        </div>
+    </section>
+
+    @if (!isLoading && searchIngredientIds.Count > 0 && enrichedMatches.Any())
+    {
+        <section class="recipes-filter-panel">
+            <div class="selected-filter-row">
+                <strong>@searchIngredientIds.Count ingredients selected</strong>
+                <a href="/ingredients">Clear All</a>
+            </div>
+
+            <div class="recipes-filter-controls">
+                <button type="button" class="filter-select @(filterMode == RecipeFilter.All ? "active" : "")" @onclick="() => SetFilter(RecipeFilter.All)">
+                    Best Match
+                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="filter-select" @onclick="SortByTime">
+                    Max Time
+                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="filter-select @(filterMode == RecipeFilter.PantryComplete ? "active" : "")" @onclick="() => SetFilter(RecipeFilter.PantryComplete)">
+                    Difficulty
+                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="filter-button" @onclick="() => SetFilter(RecipeFilter.All)">
+                    <i class="bi bi-sliders" aria-hidden="true"></i>
+                    Filters
+                </button>
+            </div>
+        </section>
+    }
+
+    @if (isLoading)
+    {
+        <section class="wireframe-section empty-state">
+            <div class="empty-art"><i class="bi bi-hourglass-split"></i></div>
+            <h2>Finding recipes...</h2>
+            <p>@loadingProgress</p>
+        </section>
+    }
+    else if (searchIngredientIds.Count == 0)
+    {
+        <section class="wireframe-section empty-state">
+            <div class="empty-art"><i class="bi bi-basket"></i></div>
+            <h2>No ingredients selected</h2>
+            <p>Select items from your pantry to search for recipes.</p>
+            <a class="wire-btn primary" href="/ingredients">Go to Pantry</a>
+        </section>
+    }
+    else if (!FilteredMatches.Any())
+    {
+        <section class="wireframe-section empty-state">
+            <h2>No recipes match this filter</h2>
+            <p>Try another filter or add more ingredients to your pantry.</p>
+            <button class="wire-btn secondary" @onclick="() => SetFilter(RecipeFilter.All)">Show All Matches</button>
+        </section>
+    }
+    else
+    {
+        <div class="recipe-suggestion-list">
+            @foreach (var item in FilteredMatches)
+            {
+                var stats = item.Stats;
+                var matchPercent = stats.TotalIngredients > 0
+                    ? (int)Math.Round(stats.HaveFromPantry * 100.0 / stats.TotalIngredients)
+                    : 0;
+                var estimate = GetRecipeEstimate(item);
+
+                <article class="recipe-suggestion-card @(stats.CanMakeWithPantry ? "can-make" : "")">
+                    <div class="suggestion-image-wrap">
+                        <img src="@item.Meal.StrMealThumb" alt="Photo of @item.Meal.StrMeal" class="suggestion-image" />
+                        <span class="suggestion-match-badge">@matchPercent% Match</span>
+                    </div>
+
+                    <div class="suggestion-content">
+                        <h2>@item.Meal.StrMeal</h2>
+
+                        <div class="suggestion-rating">
+                            <span class="stars" aria-label="@estimate.Rating out of 5 stars">★★★★<span>★</span></span>
+                            <span>(@estimate.RatingCount)</span>
+                        </div>
+
+                        <div class="suggestion-meta">
+                            <span><i class="bi bi-clock" aria-hidden="true"></i> @estimate.Minutes mins</span>
+                            <span aria-hidden="true">:</span>
+                            <span><i class="bi bi-bar-chart-fill" aria-hidden="true"></i> @estimate.Difficulty</span>
+                        </div>
+
+                        <div class="suggestion-tags">
+                            @foreach (var ingredient in GetIngredientTags(item).Take(5))
+                            {
+                                <span>@ingredient</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="suggestion-actions">
+                        <button type="button" class="icon-button recipe-icon-button @(IsFavorited(item.Meal.IdMeal) ? "favorited" : "")" disabled="@(!isLoggedIn)" @onclick="() => QuickSave(item.Meal)" aria-label="Save favorite">
+                            <i class="bi @(IsFavorited(item.Meal.IdMeal) ? "bi-heart-fill" : "bi-heart")"></i>
+                        </button>
+                        <button type="button" class="icon-button recipe-icon-button" aria-label="Bookmark recipe">
+                            <i class="bi bi-bookmark"></i>
+                        </button>
+                        <a class="wire-btn primary view-recipe-btn" href="/mealdbrecipe/@item.Meal.IdMeal">View Recipe</a>
+                    </div>
+                </article>
+            }
+        </div>
+
+        @if (CanLoadMore)
+        {
+            <div class="load-more-row">
+                <button type="button" class="wire-btn secondary" disabled="@isLoadingMore" @onclick="LoadMoreAsync">
+                    @(isLoadingMore ? "Loading 15 more..." : $"Load 15 More ({remainingCount} left)")
+                </button>
+            </div>
+        }
+        else
+        {
+            <p class="no-more-recipes">No more recipes to load</p>
+        }
+    }
+</div>
+
+@code {
+    private enum RecipeFilter { All, PantryComplete, SearchComplete }
+
+    [SupplyParameterFromQuery(Name = "ingredients")]
+    public string? IngredientQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "filter")]
+    public string? FilterQuery { get; set; }
+
+    private List<int> searchIngredientIds = new();
+    private List<string> pantryNames = new();
+    private List<string> searchNames = new();
+    private List<EnrichedRecipeMatch> enrichedMatches = new();
+    private List<EnrichedRecipeMatch> recipeCandidates = new();
+    private HashSet<string> favoritedMealIds = new();
+    private RecipeFilter filterMode = RecipeFilter.All;
+    private bool isLoading = true;
+    private bool isLoadingMore;
+    private bool isLoggedIn;
+    private string? userId;
+    private string loadingProgress = "0";
+    private int allCount;
+    private int pantryCompleteCount;
+    private int searchCompleteCount;
+    private bool searchStarted;
+    private int nextCandidateIndex;
+    private const int PageSize = 15;
+
+    private string EditPantryUrl =>
+        searchIngredientIds.Count == 0
+            ? "/ingredients"
+            : $"/ingredients?selected={string.Join(",", searchIngredientIds)}";
+
+    private IEnumerable<EnrichedRecipeMatch> FilteredMatches => filterMode switch
+    {
+        RecipeFilter.PantryComplete => enrichedMatches.Where(m => m.Stats.CanMakeWithPantry),
+        RecipeFilter.SearchComplete => enrichedMatches.Where(m => m.Stats.CanMakeWithSearch),
+        _ => enrichedMatches
+    };
+
+    private int remainingCount => Math.Max(0, recipeCandidates.Count - nextCandidateIndex);
+    private bool CanLoadMore => remainingCount > 0 && !isLoading;
+
+    protected override void OnInitialized()
+    {
+        if (!string.IsNullOrWhiteSpace(FilterQuery))
+        {
+            filterMode = FilterQuery.ToLowerInvariant() switch
+            {
+                "pantry" => RecipeFilter.PantryComplete,
+                "selected" => RecipeFilter.SearchComplete,
+                _ => RecipeFilter.All
+            };
+        }
+
+        if (!string.IsNullOrWhiteSpace(IngredientQuery))
+        {
+            searchIngredientIds = IngredientQuery
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => int.TryParse(s, out var id) ? id : 0)
+                .Where(id => id > 0)
+                .ToList();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || searchStarted)
+            return;
+
+        searchStarted = true;
+        await RunSearchAsync();
+    }
+
+    private async Task RunSearchAsync()
+    {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        isLoggedIn = auth.User.Identity?.IsAuthenticated == true;
+
+        if (isLoggedIn)
+        {
+            userId = (await UserManager.GetUserAsync(auth.User))?.Id;
+            if (userId != null)
+            {
+                // Migrate any guest pantry saved in the browser into the account.
+                var localIds = await LocalPantryStore.GetAsync(JS);
+                if (localIds.Count > 0)
+                {
+                    await Pantry.AddManyToPantryAsync(userId, localIds);
+                    await LocalPantryStore.ClearAsync(JS);
+                }
+
+                var pantry = await Pantry.GetPantryIngredientsAsync(userId);
+                pantryNames = pantry.Select(i => i.Name).ToList();
+                favoritedMealIds = Db.SavedRecipes
+                    .Where(r => r.UserId == userId && r.IsFavorite && r.MealDbId != null)
+                    .Select(r => r.MealDbId!)
+                    .ToHashSet();
+            }
+        }
+        else
+        {
+            // Guests: use the pantry stored on this device for the have/buy analysis.
+            var localIds = await LocalPantryStore.GetAsync(JS);
+            if (localIds.Count > 0)
+            {
+                pantryNames = Db.Ingredients
+                    .Where(i => localIds.Contains(i.Id))
+                    .Select(i => i.Name)
+                    .ToList();
+            }
+        }
+
+        if (searchIngredientIds.Count == 0)
+        {
+            isLoading = false;
+            StateHasChanged();
+            return;
+        }
+
+        var searchIngredients = Db.Ingredients
+            .Where(i => searchIngredientIds.Contains(i.Id))
+            .ToList();
+
+        searchNames = searchIngredients.Select(i => i.Name).ToList();
+
+        // For guests without a saved pantry, treat the selected ingredients as the pantry
+        // so the have/buy counts are still meaningful.
+        if (pantryNames.Count == 0)
+            pantryNames = searchNames.ToList();
+
+        loadingProgress = "Searching meals from TheMealDB...";
+        StateHasChanged();
+
+        var matchDictionary = new Dictionary<string, EnrichedRecipeMatch>();
+        MealDb.ResetRequestFailure();
+
+        var searchTasks = searchIngredients
+            .Take(15)
+            .Select(async ingredient => new
+            {
+                Ingredient = ingredient.Name,
+                Meals = await MealDb.SearchByIngredientAsync(ingredient.Name)
+            })
+            .ToList();
+
+        var searchResults = await Task.WhenAll(searchTasks);
+
+        foreach (var result in searchResults)
+        {
+            foreach (var meal in result.Meals.Take(30))
+            {
+                if (!matchDictionary.TryGetValue(meal.IdMeal, out var match))
+                {
+                    match = new EnrichedRecipeMatch
+                    {
+                        Meal = meal,
+                        MatchedSearchNames = new List<string>()
+                    };
+                    matchDictionary[meal.IdMeal] = match;
+                }
+
+                match.SearchHitCount++;
+                match.MatchedSearchNames.Add(result.Ingredient);
+            }
+        }
+
+        recipeCandidates = matchDictionary.Values
+            .OrderByDescending(m => m.SearchHitCount)
+            .ThenBy(m => m.Meal.StrMeal)
+            .ToList();
+        nextCandidateIndex = 0;
+
+        loadingProgress = recipeCandidates.Count == 0
+            ? "No recipes found for those ingredients."
+            : $"Loading the first {Math.Min(PageSize, recipeCandidates.Count)} recipes...";
+
+        await HydrateNextBatchAsync(PageSize);
+
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task HydrateNextBatchAsync(int count)
+    {
+        var batch = recipeCandidates
+            .Skip(nextCandidateIndex)
+            .Take(count)
+            .ToList();
+
+        nextCandidateIndex += batch.Count;
+
+        foreach (var candidate in batch)
+        {
+            var detail = await MealDb.GetMealDetailsAsync(candidate.Meal.IdMeal);
+            candidate.Detail = detail;
+            if (detail != null)
+            {
+                candidate.Stats = RecipeMatchAnalyzer.Analyze(detail, pantryNames, searchNames);
+                enrichedMatches.Add(candidate);
+            }
+        }
+
+        enrichedMatches = enrichedMatches
+            .OrderBy(m => m.Stats.BuyCount)
+            .ThenByDescending(m => m.Stats.HaveFromPantry)
+            .ThenBy(m => m.Meal.StrMeal)
+            .ToList();
+
+        allCount = enrichedMatches.Count;
+        pantryCompleteCount = enrichedMatches.Count(m => m.Stats.CanMakeWithPantry);
+        searchCompleteCount = enrichedMatches.Count(m => m.Stats.CanMakeWithSearch);
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        if (isLoadingMore || !CanLoadMore)
+            return;
+
+        isLoadingMore = true;
+        await HydrateNextBatchAsync(PageSize);
+        isLoadingMore = false;
+        StateHasChanged();
+    }
+
+    private void SetFilter(RecipeFilter mode) => filterMode = mode;
+
+    private void SortByTime()
+    {
+        enrichedMatches = enrichedMatches
+            .OrderBy(GetEstimatedMinutes)
+            .ThenBy(m => m.Meal.StrMeal)
+            .ToList();
+    }
+
+    private bool IsFavorited(string mealId) => favoritedMealIds.Contains(mealId);
+
+    private RecipeEstimate GetRecipeEstimate(EnrichedRecipeMatch match)
+    {
+        var minutes = GetEstimatedMinutes(match);
+        var difficulty = match.Stats.TotalIngredients >= 12 || match.Stats.BuyCount >= 5
+            ? "Medium"
+            : "Easy";
+        var ratingCount = 40 + Math.Abs(match.Meal.IdMeal.GetHashCode()) % 90;
+
+        return new RecipeEstimate(minutes, difficulty, "4.5", ratingCount);
+    }
+
+    private int GetEstimatedMinutes(EnrichedRecipeMatch match)
+    {
+        var total = Math.Max(match.Stats.TotalIngredients, 4);
+        var baseMinutes = total <= 6 ? 10 : total <= 10 ? 20 : 30;
+        return baseMinutes + (Math.Abs(match.Meal.StrMeal.GetHashCode()) % 2) * 5;
+    }
+
+    private IEnumerable<string> GetIngredientTags(EnrichedRecipeMatch match)
+    {
+        if (match.Detail != null)
+        {
+            return match.Detail.GetIngredientsWithMeasures()
+                .Select(i => DisplayIngredient(i.Ingredient))
+                .Where(i => !string.IsNullOrWhiteSpace(i))
+                .Distinct(StringComparer.OrdinalIgnoreCase);
+        }
+
+        return match.MatchedSearchNames.Select(DisplayIngredient);
+    }
+
+    private static string DisplayIngredient(string name) =>
+        name switch
+        {
+            "Chicken Breast" => "Chicken",
+            "Cheddar Cheese" => "Cheese",
+            _ => name
+        };
+
+    private record RecipeEstimate(int Minutes, string Difficulty, string Rating, int RatingCount);
+
+    private void QuickSave(MealDbMealSummary meal)
+    {
+        if (userId == null) return;
+        var existing = Db.SavedRecipes.FirstOrDefault(r => r.UserId == userId && r.MealDbId == meal.IdMeal);
+        if (existing == null)
+        {
+            Db.SavedRecipes.Add(new SavedRecipe
+            {
+                UserId = userId,
+                MealDbId = meal.IdMeal,
+                MealDbName = meal.StrMeal,
+                MealDbImageUrl = meal.StrMealThumb,
+                IsFavorite = true
+            });
+        }
+        else
+        {
+            existing.IsFavorite = !existing.IsFavorite;
+        }
+        Db.SaveChanges();
+        favoritedMealIds = Db.SavedRecipes
+            .Where(r => r.UserId == userId && r.IsFavorite && r.MealDbId != null)
+            .Select(r => r.MealDbId!)
+            .ToHashSet();
+    }
+}

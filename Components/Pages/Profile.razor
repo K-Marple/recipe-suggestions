@@ -1,0 +1,200 @@
+@page "/profile"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Components.Authorization
+@using recipe_suggestions.Data
+@using recipe_suggestions.Services
+@inject ApplicationDbContext Db
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthStateProvider
+@inject PantryService Pantry
+
+<PageTitle>Profile</PageTitle>
+
+<div class="wireframe-page compact-page profile-screen">
+
+    <section class="page-heading">
+        <h1>Profile</h1>
+        <p>Manage your account and view your activity.</p>
+    </section>
+
+    @if (!isLoggedIn)
+    {
+        <section class="wireframe-section empty-state">
+            <div class="empty-art"><i class="bi bi-person-lock" aria-hidden="true"></i></div>
+            <h2>Login required</h2>
+            <p>Login to view your profile.</p>
+            <a class="wire-btn primary" href="/Account/Login">Login</a>
+        </section>
+    }
+    else
+    {
+        <div class="profile-dashboard">
+            <section class="profile-top-row">
+                <div class="profile-identity-card">
+                    <div class="profile-avatar" aria-hidden="true">
+                        <i class="bi bi-person-fill"></i>
+                    </div>
+                    <div>
+                        <h2>@displayName</h2>
+                        <p>@email</p>
+                        <a class="wire-btn secondary profile-edit-btn" href="/Account/Manage">
+                            <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                            Edit Profile
+                        </a>
+                    </div>
+                </div>
+
+                <section class="profile-stats-strip" aria-label="Profile statistics">
+                    <a href="/savedrecipes">
+                        <i class="bi bi-bookmark-fill" aria-hidden="true"></i>
+                        <strong>@savedCount</strong>
+                        <span>Saved Recipes</span>
+                    </a>
+                    <a href="/savedrecipes?tab=favorites">
+                        <i class="bi bi-heart-fill" aria-hidden="true"></i>
+                        <strong>@favoriteCount</strong>
+                        <span>Favorites</span>
+                    </a>
+                    <a href="/ingredients">
+                        <i class="bi bi-leaf" aria-hidden="true"></i>
+                        <strong>@customIngredientCount</strong>
+                        <span>Custom Ingredients</span>
+                    </a>
+                    <a href="/recipes">
+                        <i class="bi bi-backpack2-fill" aria-hidden="true"></i>
+                        <strong>@recentRecipeCount</strong>
+                        <span>Recent Recipes</span>
+                    </a>
+                </section>
+            </section>
+
+            <section class="profile-content-grid">
+                <div>
+                    <h2 class="profile-section-title">Account</h2>
+                    <section class="profile-list-card">
+                        @foreach (var item in accountItems)
+                        {
+                            <a class="profile-list-row" href="@item.Href">
+                                <i class="bi @item.Icon" aria-hidden="true"></i>
+                                <span>
+                                    <strong>@item.Title</strong>
+                                    <small>@item.Description</small>
+                                </span>
+                                <i class="bi bi-chevron-right row-chevron" aria-hidden="true"></i>
+                            </a>
+                        }
+                    </section>
+                </div>
+
+                <div>
+                    <h2 class="profile-section-title">Your Activity</h2>
+                    <section class="profile-list-card activity-card">
+                        @foreach (var item in ActivityItems)
+                        {
+                            <a class="profile-list-row" href="@item.Href">
+                                <i class="bi @item.Icon" aria-hidden="true"></i>
+                                <span>
+                                    <strong>@item.Title</strong>
+                                    <small>@item.Description</small>
+                                </span>
+                                <em>@item.Count</em>
+                                <i class="bi bi-chevron-right row-chevron" aria-hidden="true"></i>
+                            </a>
+                        }
+                    </section>
+
+                    <h2 class="profile-section-title danger-heading">Danger Zone</h2>
+                    <section class="danger-zone-card">
+                        <a href="/Account/Manage/PersonalData">
+                            <i class="bi bi-trash3" aria-hidden="true"></i>
+                            <span>
+                                <strong>Delete Account</strong>
+                                <small>Permanently delete your account and all of your data.</small>
+                            </span>
+                            <i class="bi bi-chevron-right row-chevron" aria-hidden="true"></i>
+                        </a>
+                    </section>
+                </div>
+            </section>
+
+            <footer class="profile-footer">ScrapeThePantry &copy; 2024 &bull; All rights reserved</footer>
+        </div>
+    }
+
+</div>
+
+@code {
+    private bool isLoggedIn;
+    private string email = "";
+    private string displayName = "";
+    private string? userId;
+
+    private int savedCount;
+    private int favoriteCount;
+    private int pantryCount;
+    private int customIngredientCount;
+    private int recentRecipeCount;
+
+    private readonly List<ProfileListItem> accountItems =
+    [
+        new("bi-person", "Personal Information", "Update your name, email, and password", "/Account/Manage"),
+        new("bi-gear", "Preferences", "Manage your app preferences", "/Account/Manage"),
+        new("bi-magic", "Dietary Preferences", "Set your dietary restrictions and allergies", "/ingredients"),
+        new("bi-rulers", "Units & Measurements", "Choose your preferred units", "/Account/Manage"),
+        new("bi-bell", "Notifications", "Manage email and push notifications", "/Account/Manage/Email"),
+        new("bi-shield-lock", "Privacy & Security", "Control your privacy and data", "/Account/Manage/PersonalData")
+    ];
+
+    private IEnumerable<ProfileActivityItem> ActivityItems =>
+    [
+        new("bi-bookmark", "Saved Recipes", "View all your saved recipes", savedCount, "/savedrecipes"),
+        new("bi-heart", "Favorite Recipes", "Recipes you've marked as favorite", favoriteCount, "/savedrecipes?tab=favorites"),
+        new("bi-leaf", "Custom Ingredients", "Ingredients you've added", customIngredientCount, "/ingredients"),
+        new("bi-clock-history", "Recently Viewed", "Recipes you viewed recently", recentRecipeCount, "/recipes")
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = auth.User;
+
+        isLoggedIn = user.Identity?.IsAuthenticated == true;
+
+        if (!isLoggedIn)
+            return;
+
+        var appUser = await UserManager.GetUserAsync(user);
+
+        userId = appUser?.Id;
+        email = appUser?.Email ?? "";
+        displayName = GetDisplayName(email);
+
+        await LoadStats();
+    }
+
+    private async Task LoadStats()
+    {
+        if (userId == null)
+            return;
+
+        savedCount = Db.SavedRecipes.Count(r => r.UserId == userId);
+        favoriteCount = Db.SavedRecipes.Count(r => r.UserId == userId && r.IsFavorite);
+        pantryCount = await Pantry.GetPantryCountAsync(userId);
+        customIngredientCount = Db.Ingredients.Count(i => i.CreatedByUserId == userId && !i.IsDefault);
+        recentRecipeCount = Math.Min(15, Math.Max(savedCount, pantryCount));
+    }
+
+    private static string GetDisplayName(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "My Profile";
+
+        var prefix = value.Split('@')[0].Replace('.', ' ').Replace('_', ' ').Trim();
+        return string.Join(' ', prefix.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Select(part => char.ToUpperInvariant(part[0]) + part[1..].ToLowerInvariant()));
+    }
+
+    private record ProfileListItem(string Icon, string Title, string Description, string Href);
+    private record ProfileActivityItem(string Icon, string Title, string Description, int Count, string Href);
+}

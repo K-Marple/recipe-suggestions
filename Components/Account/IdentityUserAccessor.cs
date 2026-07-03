@@ -1,0 +1,20 @@
+using Microsoft.AspNetCore.Identity;
+using recipe_suggestions.Data;
+
+namespace recipe_suggestions.Components.Account;
+
+internal sealed class IdentityUserAccessor(UserManager<ApplicationUser> userManager, IdentityRedirectManager redirectManager)
+{
+    public async Task<ApplicationUser> GetRequiredUserAsync(HttpContext context)
+    {
+        var user = await userManager.GetUserAsync(context.User);
+
+        if (user is null)
+        {
+            redirectManager.RedirectToWithStatus("Account/InvalidUser", $"Error: Unable to load user with ID '{userManager.GetUserId(context.User)}'.", context);
+            throw new InvalidOperationException("Redirect failed to interrupt execution for a null user.");
+        }
+
+        return user;
+    }
+}

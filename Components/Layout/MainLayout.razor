@@ -1,0 +1,59 @@
+@inherits LayoutComponentBase
+@using System.Security.Claims
+
+<a href="#main-content" class="skip-link">Skip to content</a>
+
+<div class="app-shell">
+    <header class="app-topbar">
+        <a class="topbar-brand" href="">
+            <span>ScrapeThePantry</span>
+        </a>
+
+        <div class="topbar-actions">
+            <AuthorizeView>
+                <Authorized Context="authContext">
+                    <span class="avatar-dot" aria-hidden="true">@GetInitial(authContext.User)</span>
+                    <span class="topbar-welcome">@GetDisplayName(authContext.User)</span>
+                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                </Authorized>
+                <NotAuthorized>
+                    <span class="avatar-dot" aria-hidden="true">G</span>
+                    <a class="topbar-welcome" href="/Account/Login">Login</a>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+    </header>
+
+    <div class="app-body">
+        <input type="checkbox" id="sidebar-toggle" class="sidebar-toggle" aria-hidden="true" />
+        <label for="sidebar-toggle" class="sidebar-toggle-btn" aria-label="Toggle navigation menu">
+            <i class="bi bi-list" aria-hidden="true"></i>
+        </label>
+
+        <NavMenu />
+
+        <main class="app-main">
+            <article id="main-content" class="page-content" tabindex="-1">
+                @Body
+            </article>
+        </main>
+    </div>
+</div>
+
+@code {
+    private static string GetDisplayName(ClaimsPrincipal user)
+    {
+        var email = user.FindFirst(ClaimTypes.Email)?.Value
+            ?? user.Identity?.Name
+            ?? "User";
+
+        var atIndex = email.IndexOf('@');
+        return atIndex > 0 ? email[..atIndex] : email;
+    }
+
+    private static string GetInitial(ClaimsPrincipal user)
+    {
+        var name = GetDisplayName(user);
+        return string.IsNullOrEmpty(name) ? "U" : char.ToUpperInvariant(name[0]).ToString();
+    }
+}
