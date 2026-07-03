@@ -41,71 +41,93 @@ else if (meal == null)
 }
 else
 {
-    <a class="back-link" href="/recipes">← Back to Results</a>
+    var estimate = GetRecipeEstimate();
+    var matchPercent = GetMatchPercent();
+    var tags = meal.GetIngredientsWithMeasures().Select(i => DisplayIngredient(i.Ingredient)).Take(5).ToList();
+    var ingredients = meal.GetIngredientsWithMeasures().ToList();
+    var steps = meal.GetInstructionSteps().ToList();
 
-    <section class="recipe-detail-layout">
-        <div class="recipe-detail-left">
-            <div class="recipe-detail-image-box">
-                <img src="@meal.StrMealThumb" alt="Photo of @meal.StrMeal" />
-            </div>
+    <div class="recipe-detail-page">
+        <main class="recipe-detail-main">
+            <a class="back-link detail-back-link" href="/recipes">
+                <i class="bi bi-arrow-left" aria-hidden="true"></i>
+                Back to Results
+            </a>
 
-            <div class="instructions-block">
-                <h2>Instructions</h2>
-                <ol class="instruction-steps">
-                    @foreach (var step in meal.GetInstructionSteps())
-                    {
-                        <li>@step</li>
-                    }
-                </ol>
-            </div>
-        </div>
-
-        <div class="recipe-detail-info">
-            <p class="app-label">Recipe Details</p>
-            <h1>@meal.StrMeal</h1>
-
-            <div class="recipe-meta-row">
-                @if (!string.IsNullOrWhiteSpace(meal.StrCategory))
-                {
-                    <span>@meal.StrCategory</span>
-                }
-                @if (!string.IsNullOrWhiteSpace(meal.StrArea))
-                {
-                    <span>@meal.StrArea</span>
-                }
-            </div>
-
-            @if (matchStats != null)
-            {
-                <div class="match-stats-row">
-                    <span class="match-stat have">
-                        <i class="bi bi-check-circle"></i>
-                        You have <strong>@matchStats.HaveFromPantry</strong> of <strong>@matchStats.TotalIngredients</strong>
-                    </span>
-                    @if (matchStats.BuyCount > 0)
-                    {
-                        <span class="match-stat buy">
-                            <i class="bi bi-cart"></i> <strong>@matchStats.BuyCount</strong> to buy
-                        </span>
-                    }
-                    else
-                    {
-                        <span class="match-stat ready"><i class="bi bi-star-fill"></i> Ready to cook</span>
-                    }
+            <section class="detail-hero-grid">
+                <div class="recipe-detail-image-box">
+                    <img src="@meal.StrMealThumb" alt="Photo of @meal.StrMeal" />
                 </div>
-            }
 
-            <div class="ingredient-tag-row" aria-label="Recipe ingredients">
-                @foreach (var (ingredient, measure) in meal.GetIngredientsWithMeasures())
-                {
-                    var hasIt = pantryNames.Any(p => IngredientMatcher.Matches(p, ingredient));
-                    <span class="ingredient-tag @(hasIt ? "have" : "need")">
-                        @if (hasIt) { <i class="bi bi-check"></i> }
-                        @ingredient@(string.IsNullOrWhiteSpace(measure) ? "" : $" ({measure})")
-                    </span>
-                }
-            </div>
+                <div class="recipe-detail-summary">
+                    <h1>@meal.StrMeal</h1>
 
+                    <div class="detail-meta-row">
+                        <span class="match-percent-pill">@matchPercent% Match</span>
+                        <span><i class="bi bi-clock" aria-hidden="true"></i> @estimate.TotalMinutes mins</span>
+                        <span aria-hidden="true">:</span>
+                        <span><i class="bi bi-bar-chart-fill" aria-hidden="true"></i> @estimate.Difficulty</span>
+                    </div>
+
+                    <p>@GetRecipeDescription()</p>
+
+                    <div class="detail-tag-row" aria-label="Recipe tags">
+                        @foreach (var tag in tags)
+                        {
+                            <span>@tag</span>
+                        }
+                    </div>
+                </div>
+            </section>
+
+            <nav class="detail-tabs" aria-label="Recipe sections">
+                <a class="active" href="#ingredients-section">Ingredients</a>
+                <a href="#instructions-section">Instructions</a>
+                <a href="#nutrition-section">Nutrition</a>
+            </nav>
+
+            <section class="detail-content-grid">
+                <div class="detail-ingredients-panel" id="ingredients-section">
+                    <div class="serving-control" aria-label="Servings">
+                        <span>Servings:</span>
+                        <div class="serving-stepper">
+                            <button type="button" aria-label="Decrease servings">-</button>
+                            <strong>2</strong>
+                            <button type="button" aria-label="Increase servings">+</button>
+                        </div>
+                    </div>
+
+                    <ul class="detail-ingredient-list">
+                        @foreach (var (ingredient, measure) in ingredients)
+                        {
+                            var hasIt = pantryNames.Any(p => IngredientMatcher.Matches(p, ingredient));
+                            <li class="@(hasIt ? "have" : "need")">
+                                <span class="ingredient-status" aria-hidden="true">
+                                    <i class="bi @(hasIt ? "bi-check-lg" : "bi-circle")"></i>
+                                </span>
+                                <span>@FormatIngredientLine(measure, ingredient)</span>
+                            </li>
+                        }
+                    </ul>
+                </div>
+
+                <div class="detail-instructions-panel" id="instructions-section">
+                    <h2>Instructions</h2>
+                    <ol class="detail-instruction-list">
+                        @for (var i = 0; i < steps.Count; i++)
+                        {
+                            <li>
+                                <span>@(i + 1)</span>
+                                <p>@steps[i]</p>
+                            </li>
+                        }
+                    </ol>
+                </div>
+            </section>
+            <div id="nutrition-section" class="nutrition-anchor" aria-hidden="true"></div>
+        </main>
+
+        <aside class="recipe-detail-side">
             <div class="detail-actions">
                 @if (!isLoggedIn)
                 {
@@ -116,7 +138,7 @@ else
                     @if (savedRecipe == null)
                     {
                         <button class="wire-btn primary" @onclick="SaveMealDbRecipe">
-                            <i class="bi bi-bookmark" aria-hidden="true"></i> Save Recipe
+                            <i class="bi bi-heart" aria-hidden="true"></i> Save Recipe
                         </button>
                     }
                     else
@@ -130,15 +152,52 @@ else
                             disabled="@(savedRecipe == null)"
                             aria-pressed="@(savedRecipe?.IsFavorite == true)"
                             @onclick="ToggleFavorite">
-                        <i class="bi @(savedRecipe?.IsFavorite == true ? "bi-heart-fill" : "bi-heart")" aria-hidden="true"></i>
-                        @(savedRecipe?.IsFavorite == true ? "Favorited" : "Favorite")
+                        <i class="bi bi-bookmark" aria-hidden="true"></i>
+                        Bookmark
                     </button>
                 }
 
-                <a class="wire-btn secondary" href="/ingredients">Choose More</a>
+                <button type="button" class="wire-btn secondary icon-only-button" aria-label="More actions">
+                    <i class="bi bi-three-dots" aria-hidden="true"></i>
+                </button>
             </div>
-        </div>
-    </section>
+
+            <section class="detail-stats-card" aria-label="Recipe facts">
+                <div>
+                    <span><i class="bi bi-person" aria-hidden="true"></i> Servings</span>
+                    <strong>2</strong>
+                </div>
+                <div>
+                    <span><i class="bi bi-clock" aria-hidden="true"></i> Prep Time</span>
+                    <strong>@estimate.PrepMinutes mins</strong>
+                </div>
+                <div>
+                    <span><i class="bi bi-basket" aria-hidden="true"></i> Cook Time</span>
+                    <strong>@estimate.CookMinutes mins</strong>
+                </div>
+                <div>
+                    <span><i class="bi bi-bar-chart-fill" aria-hidden="true"></i> Difficulty</span>
+                    <strong>@estimate.Difficulty</strong>
+                </div>
+                <div>
+                    <span><i class="bi bi-leaf" aria-hidden="true"></i> Cuisine</span>
+                    <strong>@(string.IsNullOrWhiteSpace(meal.StrArea) ? "Global" : meal.StrArea)</strong>
+                </div>
+                <div>
+                    <span><i class="bi bi-tag" aria-hidden="true"></i> Category</span>
+                    <strong>@(string.IsNullOrWhiteSpace(meal.StrCategory) ? "Dinner" : meal.StrCategory)</strong>
+                </div>
+            </section>
+
+            <section class="cooking-tip-card">
+                <i class="bi bi-lightbulb" aria-hidden="true"></i>
+                <div>
+                    <h2>Cooking Tip</h2>
+                    <p>@GetCookingTip()</p>
+                </div>
+            </section>
+        </aside>
+    </div>
 }
 
 </div>
@@ -249,4 +308,62 @@ else
         var returnUrl = Uri.EscapeDataString(Nav.Uri);
         return $"/Account/Login?ReturnUrl={returnUrl}";
     }
+
+    private int GetMatchPercent()
+    {
+        if (matchStats == null || matchStats.TotalIngredients == 0)
+            return pantryNames.Count == 0 ? 100 : 0;
+
+        return (int)Math.Round(matchStats.HaveFromPantry * 100.0 / matchStats.TotalIngredients);
+    }
+
+    private DetailEstimate GetRecipeEstimate()
+    {
+        var ingredientCount = meal?.GetIngredientsWithMeasures().Count() ?? 8;
+        var total = ingredientCount <= 6 ? 20 : ingredientCount <= 11 ? 30 : 40;
+        var prep = Math.Max(10, total / 2);
+        var cook = Math.Max(10, total - prep);
+        var difficulty = ingredientCount >= 12 ? "Medium" : "Easy";
+
+        return new DetailEstimate(prep, cook, prep + cook, difficulty);
+    }
+
+    private string GetRecipeDescription()
+    {
+        var category = string.IsNullOrWhiteSpace(meal?.StrCategory) ? "recipe" : meal.StrCategory.ToLowerInvariant();
+        var area = string.IsNullOrWhiteSpace(meal?.StrArea) ? "" : $" with {meal.StrArea} flavor";
+        return $"A quick and satisfying {category}{area}. Perfect for busy weeknights!";
+    }
+
+    private static string DisplayIngredient(string name) =>
+        name switch
+        {
+            "Chicken Breast" => "Chicken",
+            "Cheddar Cheese" => "Cheese",
+            _ => name
+        };
+
+    private static string FormatIngredientLine(string measure, string ingredient)
+    {
+        var displayIngredient = DisplayIngredient(ingredient).ToLowerInvariant();
+        return string.IsNullOrWhiteSpace(measure)
+            ? DisplayIngredient(ingredient)
+            : $"{measure.Trim()} {displayIngredient}";
+    }
+
+    private string GetCookingTip()
+    {
+        if (meal?.StrCategory?.Contains("Dessert", StringComparison.OrdinalIgnoreCase) == true)
+            return "Let ingredients come to room temperature before mixing for a smoother texture.";
+
+        if (meal?.StrArea?.Contains("Italian", StringComparison.OrdinalIgnoreCase) == true)
+            return "Save a splash of pasta water to loosen the sauce before serving.";
+
+        if (meal?.StrCategory?.Contains("Seafood", StringComparison.OrdinalIgnoreCase) == true)
+            return "Cook seafood just until opaque so it stays tender.";
+
+        return "For extra flavor, try adding a squeeze of lemon juice before serving!";
+    }
+
+    private record DetailEstimate(int PrepMinutes, int CookMinutes, int TotalMinutes, string Difficulty);
 }

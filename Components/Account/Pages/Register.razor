@@ -17,42 +17,71 @@
 
 <PageTitle>Register</PageTitle>
 
-<h1>Register</h1>
+<section class="auth-card-shell">
+    <div class="auth-card register-card">
+        <div class="auth-card-header">
+            <h1>Create Account</h1>
+            <p>Sign up to start discovering recipes.</p>
+        </div>
 
-<div class="row">
-    <div class="col-md-4">
         <StatusMessage Message="@Message" />
-        <EditForm Model="Input" asp-route-returnUrl="@ReturnUrl" method="post" OnValidSubmit="RegisterUser" FormName="register">
+
+        <EditForm Model="Input" asp-route-returnUrl="@ReturnUrl" method="post" OnValidSubmit="RegisterUser" FormName="register" class="auth-form">
             <DataAnnotationsValidator />
-            <h2>Create a new account.</h2>
-            <hr />
             <ValidationSummary class="text-danger" role="alert" />
-            <div class="form-floating mb-3">
-                <InputText @bind-Value="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
-                <label for="email">Email</label>
+
+            <div class="auth-field">
+                <label for="email">Email Address</label>
+                <div class="auth-input-wrap">
+                    <i class="bi bi-envelope" aria-hidden="true"></i>
+                    <InputText id="email" @bind-Value="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="Enter your email" />
+                </div>
                 <ValidationMessage For="() => Input.Email" class="text-danger" />
             </div>
-            <div class="form-floating mb-3">
-                <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
+
+            <div class="auth-field">
                 <label for="password">Password</label>
+                <div class="auth-input-wrap">
+                    <i class="bi bi-lock" aria-hidden="true"></i>
+                    <InputText id="password" type="password" @bind-Value="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" placeholder="Create a password" />
+                </div>
+                <small>Must be at least 6 characters long</small>
                 <ValidationMessage For="() => Input.Password" class="text-danger" />
             </div>
-            <div class="form-floating mb-3">
-                <InputText type="password" @bind-Value="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
+
+            <div class="auth-field">
                 <label for="confirm-password">Confirm Password</label>
+                <div class="auth-input-wrap">
+                    <i class="bi bi-lock" aria-hidden="true"></i>
+                    <InputText id="confirm-password" type="password" @bind-Value="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="Confirm your password" />
+                </div>
                 <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger" />
             </div>
-            <button type="submit" class="w-100 btn btn-lg btn-primary">Register</button>
+
+            <p class="auth-terms">By creating an account, you agree to use ScrapeThePantry for class project recipe planning.</p>
+
+            <button type="submit" class="auth-submit">Create Account</button>
         </EditForm>
+
+        <div class="auth-divider"><span>or</span></div>
+
+        <div class="auth-social-stack" aria-label="External sign-up options">
+            <button type="button" class="auth-social-btn" disabled title="Google sign-up is not configured">
+                <span class="google-mark" aria-hidden="true">G</span>
+                Continue with Google
+            </button>
+            <button type="button" class="auth-social-btn" disabled title="Apple sign-up is not configured">
+                <i class="bi bi-apple" aria-hidden="true"></i>
+                Continue with Apple
+            </button>
+        </div>
+
+        <p class="auth-switch">
+            Already have an account?
+            <a href="@(NavigationManager.GetUriWithQueryParameters("Account/Login", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">Log in</a>
+        </p>
     </div>
-    <div class="col-md-6 col-md-offset-2">
-        <section>
-            <h3>Use another service to register.</h3>
-            <hr />
-            <ExternalLoginPicker />
-        </section>
-    </div>
-</div>
+</section>
 
 @code {
     private IEnumerable<IdentityError>? identityErrors;

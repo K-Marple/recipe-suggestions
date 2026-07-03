@@ -9,10 +9,6 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 {
     public DbSet<Ingredient> Ingredients => Set<Ingredient>();
 
-    public DbSet<Recipe> Recipes => Set<Recipe>();
-
-    public DbSet<RecipeIngredient> RecipeIngredients => Set<RecipeIngredient>();
-
     public DbSet<SavedRecipe> SavedRecipes => Set<SavedRecipe>();
 
     public DbSet<PantryItem> PantryItems => Set<PantryItem>();

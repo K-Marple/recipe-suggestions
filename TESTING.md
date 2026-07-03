@@ -2,6 +2,22 @@
 
 Use this checklist before submitting or deploying the app.
 
+## Recorded Automated Checks
+
+- [x] Build passed with 0 warnings and 0 errors using `dotnet build -o .\build-check-evidence2 /p:UseAppHost=false`.
+- [x] Desktop smoke check completed for Home, Ingredients, Recipes, Saved Recipes, Profile, Login, and Register.
+- [x] Mobile smoke check completed for Home, Ingredients, Recipes, Saved Recipes, Profile, Login, and Register.
+- [x] Checked routes had no horizontal overflow in the tested desktop/mobile viewports.
+- [x] Checked routes had no images missing `alt` attributes.
+- [x] Checked routes had no unnamed buttons.
+- [x] Checked routes had no unlabeled visible inputs after account form label fixes.
+
+See `QA_RESULTS.md` for details.
+
+## Manual Checks Still Needed
+
+These require a person to run through the app with test accounts and confirm behavior.
+
 ## Authentication
 
 - [ ] Register with a new email and valid password.

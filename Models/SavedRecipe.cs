@@ -6,9 +6,6 @@ public class SavedRecipe
 
     public string UserId { get; set; } = "";
 
-    public int? RecipeId { get; set; }
-    public Recipe? Recipe { get; set; }
-
     public string? MealDbId { get; set; }
     public string? MealDbName { get; set; }
     public string? MealDbImageUrl { get; set; }

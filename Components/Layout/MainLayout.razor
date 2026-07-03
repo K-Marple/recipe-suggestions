@@ -1,34 +1,43 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 @using System.Security.Claims
 
 <a href="#main-content" class="skip-link">Skip to content</a>
 
 <div class="app-shell">
-    <input type="checkbox" id="sidebar-toggle" class="sidebar-toggle" aria-hidden="true" />
-    <label for="sidebar-toggle" class="sidebar-toggle-btn" aria-label="Toggle navigation menu">
-        <i class="bi bi-list" aria-hidden="true"></i>
-    </label>
+    <header class="app-topbar">
+        <a class="topbar-brand" href="">
+            <span>ScrapeThePantry</span>
+        </a>
 
-    <NavMenu />
-
-    <main class="app-main">
-        <header class="app-topbar">
+        <div class="topbar-actions">
             <AuthorizeView>
                 <Authorized Context="authContext">
-                    <span class="topbar-welcome">Welcome, @GetDisplayName(authContext.User)</span>
                     <span class="avatar-dot" aria-hidden="true">@GetInitial(authContext.User)</span>
+                    <span class="topbar-welcome">@GetDisplayName(authContext.User)</span>
+                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
                 </Authorized>
                 <NotAuthorized>
-                    <span class="topbar-welcome">Welcome, Guest</span>
                     <span class="avatar-dot" aria-hidden="true">G</span>
+                    <a class="topbar-welcome" href="/Account/Login">Login</a>
                 </NotAuthorized>
             </AuthorizeView>
-        </header>
+        </div>
+    </header>
 
-        <article id="main-content" class="page-content" tabindex="-1">
-            @Body
-        </article>
-    </main>
+    <div class="app-body">
+        <input type="checkbox" id="sidebar-toggle" class="sidebar-toggle" aria-hidden="true" />
+        <label for="sidebar-toggle" class="sidebar-toggle-btn" aria-label="Toggle navigation menu">
+            <i class="bi bi-list" aria-hidden="true"></i>
+        </label>
+
+        <NavMenu />
+
+        <main class="app-main">
+            <article id="main-content" class="page-content" tabindex="-1">
+                @Body
+            </article>
+        </main>
+    </div>
 </div>
 
 @code {

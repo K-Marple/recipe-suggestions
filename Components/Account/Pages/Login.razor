@@ -12,57 +12,71 @@
 
 <PageTitle>Log in</PageTitle>
 
-<h1>Log in</h1>
-<div class="row">
-    <div class="col-md-4">
-        <section>
-            <StatusMessage Message="@errorMessage" />
-            <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login">
-                <DataAnnotationsValidator />
-                <h2>Use a local account to log in.</h2>
-                <hr />
-                <ValidationSummary class="text-danger" role="alert" />
-                <div class="form-floating mb-3">
-                    <InputText @bind-Value="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
-                    <label for="email" class="form-label">Email</label>
-                    <ValidationMessage For="() => Input.Email" class="text-danger" />
+<section class="auth-card-shell">
+    <div class="auth-card">
+        <div class="auth-card-header">
+            <h1>Welcome Back!</h1>
+            <p>Log in to continue finding amazing recipes.</p>
+        </div>
+
+        <StatusMessage Message="@errorMessage" />
+
+        <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login" class="auth-form">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert" />
+
+            <div class="auth-field">
+                <label for="email">Email Address</label>
+                <div class="auth-input-wrap">
+                    <i class="bi bi-envelope" aria-hidden="true"></i>
+                    <InputText id="email" @bind-Value="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="Enter your email" />
                 </div>
-                <div class="form-floating mb-3">
-                    <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
-                    <label for="password" class="form-label">Password</label>
-                    <ValidationMessage For="() => Input.Password" class="text-danger" />
+                <ValidationMessage For="() => Input.Email" class="text-danger" />
+            </div>
+
+            <div class="auth-field">
+                <label for="password">Password</label>
+                <div class="auth-input-wrap">
+                    <i class="bi bi-lock" aria-hidden="true"></i>
+                    <InputText id="password" type="password" @bind-Value="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="Enter your password" />
                 </div>
-                <div class="checkbox mb-3">
-                    <label class="form-label">
-                        <InputCheckbox @bind-Value="Input.RememberMe" class="darker-border-checkbox form-check-input" />
-                        Remember me
-                    </label>
-                </div>
-                <div>
-                    <button type="submit" class="w-100 btn btn-lg btn-primary">Log in</button>
-                </div>
-                <div>
-                    <p>
-                        <a href="Account/ForgotPassword">Forgot your password?</a>
-                    </p>
-                    <p>
-                        <a href="@(NavigationManager.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">Register as a new user</a>
-                    </p>
-                    <p>
-                        <a href="Account/ResendEmailConfirmation">Resend email confirmation</a>
-                    </p>
-                </div>
-            </EditForm>
-        </section>
+                <ValidationMessage For="() => Input.Password" class="text-danger" />
+            </div>
+
+            <div class="auth-form-row">
+                <label class="auth-checkbox">
+                    <InputCheckbox @bind-Value="Input.RememberMe" />
+                    <span>Remember me</span>
+                </label>
+                <a href="Account/ForgotPassword">Forgot password?</a>
+            </div>
+
+            <button type="submit" class="auth-submit">Log In</button>
+        </EditForm>
+
+        <div class="auth-divider"><span>or</span></div>
+
+        <div class="auth-social-stack" aria-label="External sign-in options">
+            <button type="button" class="auth-social-btn" disabled title="Google sign-in is not configured">
+                <span class="google-mark" aria-hidden="true">G</span>
+                Continue with Google
+            </button>
+            <button type="button" class="auth-social-btn" disabled title="Apple sign-in is not configured">
+                <i class="bi bi-apple" aria-hidden="true"></i>
+                Continue with Apple
+            </button>
+        </div>
+
+        <div class="auth-secondary-actions">
+            <a href="Account/ResendEmailConfirmation">Resend email confirmation</a>
+        </div>
+
+        <p class="auth-switch">
+            Don't have an account?
+            <a href="@(NavigationManager.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">Sign up</a>
+        </p>
     </div>
-    <div class="col-md-6 col-md-offset-2">
-        <section>
-            <h3>Use another service to log in.</h3>
-            <hr />
-            <ExternalLoginPicker />
-        </section>
-    </div>
-</div>
+</section>
 
 @code {
     private string? errorMessage;

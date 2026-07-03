@@ -56,6 +56,14 @@ dotnet run
 
 6. Open the localhost URL shown in the terminal.
 
+## Source Repository
+
+GitHub remote:
+
+```text
+https://github.com/K-Marple/recipe-suggestions.git
+```
+
 ## Database and Migrations
 
 The app uses SQLite through Entity Framework Core. The default connection string is configured in `appsettings.json`.
@@ -120,6 +128,8 @@ The recipe results page searches each selected ingredient separately, merges dup
 
 See `TESTING.md` for the full manual QA checklist. At minimum, verify registration, login, ingredient CRUD, recipe search, recipe details, saved recipe actions, profile stats, mobile layout, and accessibility/Lighthouse checks.
 
+See `QA_RESULTS.md` for recorded build, responsive smoke-test, accessibility smoke-test, and repository evidence.
+
 ## Deployment Notes
 
 - Configure a production SQLite path or managed database connection string.
@@ -129,6 +139,8 @@ See `TESTING.md` for the full manual QA checklist. At minimum, verify registrati
 - Use HTTPS in production.
 - Set environment-specific connection strings in deployment secrets or app settings.
 - Run `dotnet build` before publishing.
+
+Deployment status: add the final cloud deployment URL here after publishing.
 
 Publish example:
 

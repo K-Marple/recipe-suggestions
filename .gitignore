@@ -1,0 +1,10 @@
+bin/
+obj/
+build-check-*/
+
+*.user
+*.suo
+.vs/
+
+Data/*.db-shm
+Data/*.db-wal
