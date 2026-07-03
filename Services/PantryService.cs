@@ -18,8 +18,10 @@ public class PantryService
         return await _db.PantryItems
             .Where(p => p.UserId == userId)
             .Include(p => p.Ingredient)
-            .OrderBy(p => p.Ingredient.Name)
+            .Where(p => p.Ingredient != null)
+            .OrderBy(p => p.Ingredient!.Name)
             .Select(p => p.Ingredient)
+            .OfType<Ingredient>()
             .ToListAsync();
     }
 

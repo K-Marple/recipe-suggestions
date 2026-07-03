@@ -1,0 +1,64 @@
+@inherits LayoutComponentBase
+@using System.Security.Claims
+@inject NavigationManager NavigationManager
+
+<a href="#main-content" class="skip-link">Skip to content</a>
+
+<div class="app-shell">
+    <header class="app-topbar">
+        <a class="topbar-brand" href="">
+            <span>ScrapeThePantry</span>
+        </a>
+
+        <div class="topbar-actions">
+            <AuthorizeView>
+                <Authorized Context="authContext">
+                    <div class="topbar-user-row">
+                        <a class="topbar-profile-link" href="/profile">Hello, @GetDisplayName(authContext.User)</a>
+                        <form class="topbar-logout-form" action="Account/Logout" method="post">
+                            <AntiforgeryToken />
+                            <input type="hidden" name="ReturnUrl" value="@NavigationManager.ToBaseRelativePath(NavigationManager.Uri)" />
+                            <button type="submit" class="topbar-logout-button">Logout</button>
+                        </form>
+                    </div>
+                </Authorized>
+                <NotAuthorized>
+                    <a class="topbar-login-button" href="/Account/Login">Log In</a>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+    </header>
+
+    <div class="app-body">
+        <input type="checkbox" id="sidebar-toggle" class="sidebar-toggle" aria-hidden="true" />
+        <label for="sidebar-toggle" class="sidebar-toggle-btn" aria-label="Toggle navigation menu">
+            <i class="bi bi-list" aria-hidden="true"></i>
+        </label>
+
+        <NavMenu />
+
+        <main class="app-main">
+            <article id="main-content" class="page-content" tabindex="-1">
+                @Body
+            </article>
+        </main>
+    </div>
+</div>
+
+@code {
+    private static string GetDisplayName(ClaimsPrincipal user)
+    {
+        var email = user.FindFirst(ClaimTypes.Email)?.Value
+            ?? user.Identity?.Name
+            ?? "User";
+
+        var atIndex = email.IndexOf('@');
+        return atIndex > 0 ? email[..atIndex] : email;
+    }
+
+    private static string GetInitial(ClaimsPrincipal user)
+    {
+        var name = GetDisplayName(user);
+        return string.IsNullOrEmpty(name) ? "U" : char.ToUpperInvariant(name[0]).ToString();
+    }
+}

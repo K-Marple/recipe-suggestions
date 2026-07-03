@@ -1,0 +1,183 @@
+@page "/savedrecipes"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.JSInterop
+@using recipe_suggestions.Data
+@using recipe_suggestions.Models
+
+@inject ApplicationDbContext Db
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
+
+<PageTitle>Saved Recipes</PageTitle>
+
+<div class="wireframe-page compact-page saved-screen">
+
+    <section class="wireframe-section mb-4 page-heading">
+        <div>
+            <h1>Saved Recipes</h1>
+            <p>Your saved and favorite recipes.</p>
+        </div>
+
+        <div class="button-row saved-tabs" role="tablist" aria-label="Filter saved recipes">
+            <button type="button"
+                    class="tab-pill @(activeTab == SavedTab.All ? "active" : "")"
+                    role="tab"
+                    aria-selected="@(activeTab == SavedTab.All)"
+                    @onclick="() => SetTab(SavedTab.All)">
+                All Recipes (@savedRecipes.Count)
+            </button>
+            <button type="button"
+                    class="tab-pill @(activeTab == SavedTab.Favorites ? "active" : "")"
+                    role="tab"
+                    aria-selected="@(activeTab == SavedTab.Favorites)"
+                    @onclick="() => SetTab(SavedTab.Favorites)">
+                Favorites (@savedRecipes.Count(r => r.IsFavorite))
+            </button>
+        </div>
+    </section>
+
+    @if (!isLoggedIn)
+    {
+        <section class="wireframe-section empty-state">
+            <div class="empty-art"><i class="bi bi-person-lock" aria-hidden="true"></i></div>
+            <h2>Login required</h2>
+            <p>Login to save and favorite recipes.</p>
+            <a class="wire-btn primary" href="/Account/Login">Login</a>
+        </section>
+    }
+    else if (!FilteredRecipes.Any())
+    {
+        <section class="wireframe-section empty-state">
+            <div class="empty-art"><i class="bi bi-heart" aria-hidden="true"></i></div>
+            @if (activeTab == SavedTab.Favorites)
+            {
+                <h2>No favorites yet</h2>
+                <p>Mark recipes as favorites from the recipe details page or search results.</p>
+            }
+            else
+            {
+                <h2>No saved recipes yet</h2>
+                <p>Start by choosing ingredients and saving recipes you like.</p>
+            }
+            <a class="wire-btn primary" href="/ingredients">Find Recipes</a>
+        </section>
+    }
+    else
+    {
+        <div class="recipe-result-grid">
+            @foreach (var saved in FilteredRecipes)
+            {
+                <article class="recipe-wire-card">
+                    @if (!string.IsNullOrWhiteSpace(saved.MealDbImageUrl))
+                    {
+                        <img src="@saved.MealDbImageUrl"
+                             class="recipe-card-image"
+                             alt="Photo of @saved.MealDbName" />
+                    }
+
+                    <div class="recipe-card-body">
+                        <h2>@saved.MealDbName</h2>
+
+                        <div class="recipe-meta-row">
+                            <span>@(saved.IsFavorite ? "Favorite" : "Saved")</span>
+                            <span>@saved.SavedAt.ToShortDateString()</span>
+                        </div>
+
+                        <div class="recipe-card-actions">
+                            <button type="button"
+                                    class="icon-button @(saved.IsFavorite ? "favorited" : "")"
+                                    aria-label="@(saved.IsFavorite ? $"Remove {saved.MealDbName} from favorites" : $"Favorite {saved.MealDbName}")"
+                                    aria-pressed="@saved.IsFavorite"
+                                    @onclick="() => ToggleFavorite(saved)">
+                                <i class="bi @(saved.IsFavorite ? "bi-heart-fill" : "bi-heart")" aria-hidden="true"></i>
+                            </button>
+
+                            <a class="wire-btn primary" href="/mealdbrecipe/@saved.MealDbId">
+                                View
+                            </a>
+
+                            <button type="button"
+                                    class="wire-btn danger"
+                                    @onclick="() => ConfirmDelete(saved)">
+                                Remove
+                            </button>
+                        </div>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+
+</div>
+
+@code {
+    private enum SavedTab { All, Favorites }
+
+    private List<SavedRecipe> savedRecipes = new();
+    private bool isLoggedIn;
+    private string? userId;
+    private SavedTab activeTab = SavedTab.All;
+
+    [SupplyParameterFromQuery(Name = "tab")]
+    public string? TabQuery { get; set; }
+
+    private IEnumerable<SavedRecipe> FilteredRecipes =>
+        activeTab == SavedTab.Favorites
+            ? savedRecipes.Where(r => r.IsFavorite)
+            : savedRecipes;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.Equals(TabQuery, "favorites", StringComparison.OrdinalIgnoreCase))
+            activeTab = SavedTab.Favorites;
+
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = auth.User;
+
+        isLoggedIn = user.Identity?.IsAuthenticated == true;
+
+        if (!isLoggedIn)
+            return;
+
+        var appUser = await UserManager.GetUserAsync(user);
+        userId = appUser?.Id;
+
+        LoadRecipes();
+    }
+
+    private void SetTab(SavedTab tab)
+    {
+        activeTab = tab;
+    }
+
+    private void LoadRecipes()
+    {
+        savedRecipes = Db.SavedRecipes
+            .Where(r => r.UserId == userId && r.MealDbId != null)
+            .OrderByDescending(r => r.IsFavorite)
+            .ThenByDescending(r => r.SavedAt)
+            .ToList();
+    }
+
+    private void ToggleFavorite(SavedRecipe recipe)
+    {
+        recipe.IsFavorite = !recipe.IsFavorite;
+        Db.SaveChanges();
+        LoadRecipes();
+    }
+
+    private async Task ConfirmDelete(SavedRecipe recipe)
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", $"Remove \"{recipe.MealDbName}\" from your saved recipes?");
+
+        if (!confirmed)
+            return;
+
+        Db.SavedRecipes.Remove(recipe);
+        Db.SaveChanges();
+        LoadRecipes();
+    }
+}
