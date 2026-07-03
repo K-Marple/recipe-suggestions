@@ -17,6 +17,7 @@ publish/
 artifacts/
 
 # SQLite temporary files
+Data/app.db
 *.db-wal
 *.db-shm
 
