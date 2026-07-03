@@ -35,10 +35,6 @@
                 <h1>My Pantry</h1>
                 <p>Select ingredients you have. Then find recipes.</p>
             </div>
-            <button class="wire-btn primary pantry-add-button" @onclick="OpenCustomIngredient">
-                <i class="bi bi-plus-lg" aria-hidden="true"></i>
-                Add Custom
-            </button>
         </div>
 
         <div class="simple-pantry-search">
@@ -52,6 +48,10 @@
                     </button>
                 }
             </div>
+            <button class="wire-btn primary pantry-add-button" @onclick="OpenCustomIngredient">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                Add Custom
+            </button>
         </div>
 
         <div class="simple-pantry-layout">
@@ -176,7 +176,11 @@
     private IEnumerable<IGrouping<string, Ingredient>> FilteredCatalogGroups =>
         FilteredCatalog
             .GroupBy(i => GetCategoryLabel(i.Category))
-            .OrderBy(g => g.Key);
+            .OrderBy(g => GetCategorySortKey(g.Key))
+            .ThenBy(g => g.Key);
+
+    private static int GetCategorySortKey(string category) =>
+        category == "Other" ? 1 : 0;
 
     private bool IsSearching => !string.IsNullOrWhiteSpace(catalogSearch);
 
@@ -346,13 +350,14 @@
 
     private static string GetCategoryLabel(string category)
     {
-        return category switch
+        return category?.Trim() switch
         {
-            "Meat & Poultry" => "Proteins",
+            "Meat & Poultry" or "Proteins" or "Protein" or "Meats" or "Seafood" => "Meats",
+            "Vegetable" or "Vegetables" => "Vegetables",
             "Grains & Pasta" => "Grains",
             "Dairy & Eggs" => "Dairy",
             "Pantry Staples" => "Oils & Sauces",
-            _ => category
+            _ => string.IsNullOrWhiteSpace(category) ? "Other" : category
         };
     }
 

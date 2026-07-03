@@ -21,25 +21,20 @@
             <p>Your saved and favorite recipes.</p>
         </div>
 
-        <div class="recipe-meta-row">
-            <span>@savedRecipes.Count saved</span>
-            <span>@savedRecipes.Count(r => r.IsFavorite) favorite(s)</span>
-        </div>
-
         <div class="button-row saved-tabs" role="tablist" aria-label="Filter saved recipes">
             <button type="button"
                     class="tab-pill @(activeTab == SavedTab.All ? "active" : "")"
                     role="tab"
                     aria-selected="@(activeTab == SavedTab.All)"
                     @onclick="() => SetTab(SavedTab.All)">
-                All Recipes
+                All Recipes (@savedRecipes.Count)
             </button>
             <button type="button"
                     class="tab-pill @(activeTab == SavedTab.Favorites ? "active" : "")"
                     role="tab"
                     aria-selected="@(activeTab == SavedTab.Favorites)"
                     @onclick="() => SetTab(SavedTab.Favorites)">
-                Favorites
+                Favorites (@savedRecipes.Count(r => r.IsFavorite))
             </button>
         </div>
     </section>

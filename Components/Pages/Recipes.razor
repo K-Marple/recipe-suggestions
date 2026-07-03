@@ -23,7 +23,6 @@
             <p>Recipes matched using your selected ingredients.</p>
         </div>
         <div class="recipe-top-actions">
-            <button type="button" class="wire-btn dark-pill" @onclick="() => SetFilter(RecipeFilter.SearchComplete)">Match All Items</button>
             <a class="wire-btn secondary pill-action" href="@EditPantryUrl">
                 <i class="bi bi-plus-lg" aria-hidden="true"></i>
                 Add Missing
@@ -31,34 +30,6 @@
         </div>
     </section>
 
-    @if (!isLoading && searchIngredientIds.Count > 0 && enrichedMatches.Any())
-    {
-        <section class="recipes-filter-panel">
-            <div class="selected-filter-row">
-                <strong>@searchIngredientIds.Count ingredients selected</strong>
-                <a href="/ingredients">Clear All</a>
-            </div>
-
-            <div class="recipes-filter-controls">
-                <button type="button" class="filter-select @(filterMode == RecipeFilter.All ? "active" : "")" @onclick="() => SetFilter(RecipeFilter.All)">
-                    Best Match
-                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
-                </button>
-                <button type="button" class="filter-select" @onclick="SortByTime">
-                    Max Time
-                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
-                </button>
-                <button type="button" class="filter-select @(filterMode == RecipeFilter.PantryComplete ? "active" : "")" @onclick="() => SetFilter(RecipeFilter.PantryComplete)">
-                    Difficulty
-                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
-                </button>
-                <button type="button" class="filter-button" @onclick="() => SetFilter(RecipeFilter.All)">
-                    <i class="bi bi-sliders" aria-hidden="true"></i>
-                    Filters
-                </button>
-            </div>
-        </section>
-    }
 
     @if (isLoading)
     {
