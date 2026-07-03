@@ -5,6 +5,7 @@
 @using recipe_suggestions.Data
 @using recipe_suggestions.Models
 @using recipe_suggestions.Services
+@using System.Globalization
 @inject MealDbService MealDb
 @inject ApplicationDbContext Db
 @inject UserManager<ApplicationUser> UserManager
@@ -81,33 +82,18 @@ else
                     </div>
 
                     <div class="detail-actions detail-hero-actions">
-                        @if (!isLoggedIn)
-                        {
-                            <a class="wire-btn primary" href="@GetLoginUrl()">Login to Save</a>
-                        }
-                        else
-                        {
-                            @if (savedRecipe == null)
-                            {
-                                <button class="wire-btn primary" @onclick="SaveMealDbRecipe">
-                                    <i class="bi bi-heart" aria-hidden="true"></i> Save Recipe
-                                </button>
-                            }
-                            else
-                            {
-                                <span class="saved-label wire-btn secondary" style="pointer-events:none;">
-                                    <i class="bi bi-check-circle" aria-hidden="true"></i> Saved
-                                </span>
-                            }
-
-                            <button class="wire-btn secondary"
-                                    disabled="@(savedRecipe == null)"
-                                    aria-pressed="@(savedRecipe?.IsFavorite == true)"
-                                    @onclick="ToggleFavorite">
-                                <i class="bi bi-bookmark" aria-hidden="true"></i>
-                                Bookmark
-                            </button>
-                        }
+                        <button type="button"
+                                class="icon-button @(savedRecipe?.IsFavorite == true ? "favorited" : "")"
+                                aria-label="@(savedRecipe?.IsFavorite == true ? "Unfavorite recipe" : "Favorite recipe")"
+                                @onclick="ToggleFavorite">
+                            <i class="bi @(savedRecipe?.IsFavorite == true ? "bi-heart-fill" : "bi-heart")" aria-hidden="true"></i>
+                        </button>
+                        <button type="button"
+                                class="icon-button @(savedRecipe != null ? "saved" : "")"
+                                aria-label="@(savedRecipe != null ? "Unsave recipe" : "Save recipe")"
+                                @onclick="ToggleSaved">
+                            <i class="bi @(savedRecipe != null ? "bi-bookmark-fill" : "bi-bookmark")" aria-hidden="true"></i>
+                        </button>
                     </div>
                 </div>
             </section>
@@ -115,8 +101,8 @@ else
             <section class="detail-info-row">
                 <section class="detail-stats-card" aria-label="Recipe facts">
                     <div>
-                        <span><i class="bi bi-person" aria-hidden="true"></i> Servings</span>
-                        <strong>2</strong>
+                        <span><i class="bi bi-person" aria-hidden="true"></i> Serves</span>
+                        <strong>@servings</strong>
                     </div>
                     <div>
                         <span><i class="bi bi-clock" aria-hidden="true"></i> Prep</span>
@@ -149,12 +135,8 @@ else
                 <div class="detail-ingredients-panel" id="ingredients-section">
                     <h2>Ingredients</h2>
                     <div class="serving-control" aria-label="Servings">
-                        <span>Servings:</span>
-                        <div class="serving-stepper">
-                            <button type="button" aria-label="Decrease servings">-</button>
-                            <strong>2</strong>
-                            <button type="button" aria-label="Increase servings">+</button>
-                        </div>
+                        <span>Serves</span>
+                        <strong>@servings</strong>
                     </div>
 
                     <ul class="detail-ingredient-list">
@@ -234,6 +216,79 @@ else
         isLoading = false;
     }
 
+    private int servings = 2;
+    private const int DefaultServings = 2;
+
+    private void ChangeServings(int delta)
+    {
+        servings = Math.Max(1, servings + delta);
+    }
+
+    private string ScaleIngredientMeasure(string measure)
+    {
+        return servings == DefaultServings
+            ? measure
+            : ScaleMeasure(measure, servings, DefaultServings);
+    }
+
+    private static string ScaleMeasure(string measure, int servings, int baseServings)
+    {
+        if (string.IsNullOrWhiteSpace(measure))
+            return measure;
+
+        var trimmed = measure.Trim();
+        var match = System.Text.RegularExpressions.Regex.Match(trimmed, "^(\\d+\\s+\\d+\\/\\d+|\\d+\\/\\d+|\\d+(?:\\.\\d+)?)(.*)$");
+        if (!match.Success)
+            return measure;
+
+        var quantityText = match.Groups[1].Value;
+        var remainder = match.Groups[2].Value.TrimStart();
+
+        if (!TryParseQuantity(quantityText, out var quantity))
+            return measure;
+
+        var scaledQuantity = quantity * servings / baseServings;
+        return $"{FormatQuantity(scaledQuantity)} {remainder}".TrimEnd();
+    }
+
+    private static bool TryParseQuantity(string text, out double quantity)
+    {
+        quantity = 0;
+        text = text.Trim();
+
+        if (text.Contains(' '))
+        {
+            var parts = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 2 && TryParseQuantity(parts[0], out var whole) && TryParseQuantity(parts[1], out var fraction))
+            {
+                quantity = whole + fraction;
+                return true;
+            }
+        }
+
+        if (text.Contains('/'))
+        {
+            var parts = text.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 2 && double.TryParse(parts[0], NumberStyles.Number, CultureInfo.InvariantCulture, out var numerator)
+                && double.TryParse(parts[1], NumberStyles.Number, CultureInfo.InvariantCulture, out var denominator)
+                && denominator != 0)
+            {
+                quantity = numerator / denominator;
+                return true;
+            }
+        }
+
+        return double.TryParse(text, NumberStyles.Number, CultureInfo.InvariantCulture, out quantity);
+    }
+
+    private static string FormatQuantity(double quantity)
+    {
+        if (Math.Abs(quantity - Math.Round(quantity)) < 0.01)
+            return Math.Round(quantity).ToString(CultureInfo.InvariantCulture);
+
+        return quantity.ToString("0.##", CultureInfo.InvariantCulture);
+    }
+
     private void LoadSavedRecipe()
     {
         if (userId == null)
@@ -245,12 +300,12 @@ else
 
     private void SaveMealDbRecipe()
     {
-        if (userId == null || meal == null)
+        if (!EnsureLoggedInOrRedirect() || meal == null)
             return;
 
         Db.SavedRecipes.Add(new SavedRecipe
         {
-            UserId = userId,
+            UserId = userId!,
             MealDbId = meal.IdMeal,
             MealDbName = meal.StrMeal,
             MealDbImageUrl = meal.StrMealThumb,
@@ -263,11 +318,52 @@ else
 
     private void ToggleFavorite()
     {
-        if (savedRecipe == null)
+        if (!EnsureLoggedInOrRedirect() || meal == null)
             return;
 
-        savedRecipe.IsFavorite = !savedRecipe.IsFavorite;
+        if (savedRecipe == null)
+        {
+            Db.SavedRecipes.Add(new SavedRecipe
+            {
+                UserId = userId!,
+                MealDbId = meal.IdMeal,
+                MealDbName = meal.StrMeal,
+                MealDbImageUrl = meal.StrMealThumb,
+                IsFavorite = true
+            });
+        }
+        else
+        {
+            savedRecipe.IsFavorite = !savedRecipe.IsFavorite;
+        }
+
         Db.SaveChanges();
+        LoadSavedRecipe();
+    }
+
+    private void ToggleSaved()
+    {
+        if (!EnsureLoggedInOrRedirect())
+            return;
+
+        if (savedRecipe == null)
+        {
+            SaveMealDbRecipe();
+            return;
+        }
+
+        Db.SavedRecipes.Remove(savedRecipe);
+        Db.SaveChanges();
+        savedRecipe = null;
+    }
+
+    private bool EnsureLoggedInOrRedirect()
+    {
+        if (isLoggedIn && userId != null)
+            return true;
+
+        Nav.NavigateTo(GetLoginUrl());
+        return false;
     }
 
     private string GetLoginUrl()
