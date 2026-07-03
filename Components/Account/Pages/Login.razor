@@ -1,7 +1,6 @@
 ﻿@page "/Account/Login"
 
 @using System.ComponentModel.DataAnnotations
-@using Microsoft.AspNetCore.Authentication
 @using Microsoft.AspNetCore.Identity
 @using recipe_suggestions.Data
 
@@ -54,19 +53,6 @@
             <button type="submit" class="auth-submit">Log In</button>
         </EditForm>
 
-        <div class="auth-divider"><span>or</span></div>
-
-        <div class="auth-social-stack" aria-label="External sign-in options">
-            <button type="button" class="auth-social-btn" disabled title="Google sign-in is not configured">
-                <span class="google-mark" aria-hidden="true">G</span>
-                Continue with Google
-            </button>
-            <button type="button" class="auth-social-btn" disabled title="Apple sign-in is not configured">
-                <i class="bi bi-apple" aria-hidden="true"></i>
-                Continue with Apple
-            </button>
-        </div>
-
         <div class="auth-secondary-actions">
             <a href="Account/ResendEmailConfirmation">Resend email confirmation</a>
         </div>
@@ -81,23 +67,11 @@
 @code {
     private string? errorMessage;
 
-    [CascadingParameter]
-    private HttpContext HttpContext { get; set; } = default!;
-
     [SupplyParameterFromForm]
     private InputModel Input { get; set; } = new();
 
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
-
-    protected override async Task OnInitializedAsync()
-    {
-        if (HttpMethods.IsGet(HttpContext.Request.Method))
-        {
-            // Clear the existing external cookie to ensure a clean login process
-            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
-        }
-    }
 
     public async Task LoginUser()
     {

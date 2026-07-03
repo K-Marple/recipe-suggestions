@@ -63,19 +63,6 @@
             <button type="submit" class="auth-submit">Create Account</button>
         </EditForm>
 
-        <div class="auth-divider"><span>or</span></div>
-
-        <div class="auth-social-stack" aria-label="External sign-up options">
-            <button type="button" class="auth-social-btn" disabled title="Google sign-up is not configured">
-                <span class="google-mark" aria-hidden="true">G</span>
-                Continue with Google
-            </button>
-            <button type="button" class="auth-social-btn" disabled title="Apple sign-up is not configured">
-                <i class="bi bi-apple" aria-hidden="true"></i>
-                Continue with Apple
-            </button>
-        </div>
-
         <p class="auth-switch">
             Already have an account?
             <a href="@(NavigationManager.GetUriWithQueryParameters("Account/Login", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">Log in</a>

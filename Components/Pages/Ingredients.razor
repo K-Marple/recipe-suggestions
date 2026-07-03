@@ -2,7 +2,6 @@
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Identity
-@using Microsoft.JSInterop
 @using recipe_suggestions.Data
 @using recipe_suggestions.Models
 @using recipe_suggestions.Services
@@ -12,7 +11,6 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject PantryService Pantry
 @inject IngredientCatalogService Catalog
-@inject IJSRuntime JS
 
 <PageTitle>My Pantry</PageTitle>
 
@@ -22,7 +20,7 @@
     {
         <div class="guest-banner warning" role="note">
             <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
-            <span>Guest mode: your pantry is saved on this device only. <a href="/Account/Login?ReturnUrl=%2Fingredients">Log in</a> to save it to your account.</span>
+            <span>Guest mode: pantry selections are temporary. <a href="/Account/Login?ReturnUrl=%2Fingredients">Log in</a> to save ingredients to your account.</span>
         </div>
     }
 
@@ -67,14 +65,41 @@
                 }
                 else
                 {
-                    @foreach (var item in FilteredCatalog)
+                    @foreach (var group in FilteredCatalogGroups)
                     {
-                        var selected = pantryIds.Contains(item.Id);
-                        <button type="button" class="simple-ingredient-row @(selected ? "selected" : "")" @onclick="() => TogglePantryIngredient(item)">
-                            <span>@GetDisplayName(item.Name)</span>
-                            <small>@GetCategoryLabel(item.Category)</small>
-                            <i class="bi @(selected ? "bi-check-circle-fill" : "bi-plus-circle")" aria-hidden="true"></i>
-                        </button>
+                        var ingredients = group.ToList();
+                        var selectedCount = ingredients.Count(i => pantryIds.Contains(i.Id));
+                        var isExpanded = IsSearching || expandedCategories.Contains(group.Key);
+
+                        <div class="simple-ingredient-category">
+                            <button type="button" class="simple-category-heading" aria-expanded="@isExpanded" @onclick="() => ToggleCategory(group.Key)">
+                                <span class="simple-category-title">
+                                    <i class="bi @(isExpanded ? "bi-chevron-down" : "bi-chevron-right")" aria-hidden="true"></i>
+                                    @group.Key
+                                </span>
+                                <span class="simple-category-count">
+                                    @ingredients.Count items
+                                    @if (selectedCount > 0)
+                                    {
+                                        <span class="simple-category-selected">@selectedCount selected</span>
+                                    }
+                                </span>
+                            </button>
+
+                            @if (isExpanded)
+                            {
+                                <div class="simple-category-items">
+                                    @foreach (var item in ingredients)
+                                    {
+                                        var selected = pantryIds.Contains(item.Id);
+                                        <button type="button" class="simple-ingredient-row @(selected ? "selected" : "")" @onclick="() => TogglePantryIngredient(item)">
+                                            <span>@GetDisplayName(item.Name)</span>
+                                            <i class="bi @(selected ? "bi-check-circle-fill" : "bi-plus-circle")" aria-hidden="true"></i>
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        </div>
                     }
                 }
             </section>
@@ -137,7 +162,7 @@
     private string? userId;
     private bool isAddModalOpen;
     private string newIngredientName = "";
-    private bool clientInitialized;
+    private HashSet<string> expandedCategories = new(StringComparer.OrdinalIgnoreCase);
 
     [SupplyParameterFromQuery(Name = "selected")]
     public string? SelectedQuery { get; set; }
@@ -147,6 +172,13 @@
             .Where(i => string.IsNullOrWhiteSpace(catalogSearch) || i.Name.Contains(catalogSearch, StringComparison.OrdinalIgnoreCase))
             .OrderBy(i => i.Category)
             .ThenBy(i => i.Name);
+
+    private IEnumerable<IGrouping<string, Ingredient>> FilteredCatalogGroups =>
+        FilteredCatalog
+            .GroupBy(i => GetCategoryLabel(i.Category))
+            .OrderBy(g => g.Key);
+
+    private bool IsSearching => !string.IsNullOrWhiteSpace(catalogSearch);
 
     protected override async Task OnInitializedAsync()
     {
@@ -161,34 +193,12 @@
             await LoadDbPantryAsync();
             RestoreSearchSelection();
         }
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!firstRender || clientInitialized)
-            return;
-
-        clientInitialized = true;
-
-        if (isLoggedIn && userId != null)
-        {
-            // A guest who just logged in may have a local pantry to migrate.
-            var localIds = await LocalPantryStore.GetAsync(JS);
-            if (localIds.Count > 0)
-            {
-                await Pantry.AddManyToPantryAsync(userId, localIds);
-                await LocalPantryStore.ClearAsync(JS);
-                await LoadDbPantryAsync();
-            }
-        }
         else
         {
-            await LoadLocalPantryAsync();
+            RestoreSearchSelection();
+            pantryIds = searchSelectedIds.ToHashSet();
+            RefreshLocalPantryList();
         }
-
-        RestoreSearchSelection();
-        SyncSearchSelectionToPantry();
-        StateHasChanged();
     }
 
     private async Task LoadDbPantryAsync()
@@ -198,19 +208,6 @@
 
         pantryIngredients = await Pantry.GetPantryIngredientsAsync(userId);
         pantryIds = pantryIngredients.Select(i => i.Id).ToHashSet();
-
-        if (searchSelectedIds.Count == 0 && pantryIngredients.Count > 0 && string.IsNullOrWhiteSpace(SelectedQuery))
-            searchSelectedIds = pantryIds.ToHashSet();
-    }
-
-    private async Task LoadLocalPantryAsync()
-    {
-        var localIds = await LocalPantryStore.GetAsync(JS);
-        pantryIds = localIds.ToHashSet();
-        pantryIngredients = Db.Ingredients
-            .Where(i => pantryIds.Contains(i.Id))
-            .OrderBy(i => i.Name)
-            .ToList();
 
         if (searchSelectedIds.Count == 0 && pantryIngredients.Count > 0 && string.IsNullOrWhiteSpace(SelectedQuery))
             searchSelectedIds = pantryIds.ToHashSet();
@@ -231,7 +228,7 @@
         searchSelectedIds = SelectedQuery
             .Split(',', StringSplitOptions.RemoveEmptyEntries)
             .Select(s => int.TryParse(s, out var id) ? id : 0)
-            .Where(id => id > 0 && pantryIds.Contains(id))
+            .Where(id => id > 0 && (pantryIds.Contains(id) || allIngredients.Any(i => i.Id == id)))
             .ToHashSet();
     }
 
@@ -241,6 +238,12 @@
     }
 
     private void ClearCatalogSearch() => catalogSearch = "";
+
+    private void ToggleCategory(string category)
+    {
+        if (!expandedCategories.Add(category))
+            expandedCategories.Remove(category);
+    }
 
     private async Task TogglePantryIngredient(Ingredient ingredient)
     {
@@ -265,11 +268,10 @@
         }
         else
         {
-            await LocalPantryStore.SetAsync(JS, pantryIds);
             RefreshLocalPantryList();
         }
 
-        SetStatus("Added to your pantry.", false);
+        ClearStatus();
     }
 
     private async Task RemoveFromPantry(int ingredientId)
@@ -284,11 +286,10 @@
         }
         else
         {
-            await LocalPantryStore.SetAsync(JS, pantryIds);
             RefreshLocalPantryList();
         }
 
-        SetStatus("Removed from pantry.", false);
+        ClearStatus();
     }
 
     private void RefreshLocalPantryList()
@@ -337,10 +338,11 @@
         await LoadDbPantryAsync();
         await LoadCatalogAsync();
         CloseModals();
-        SetStatus($"{name} added to pantry.", false);
+        ClearStatus();
     }
 
     private void SetStatus(string msg, bool error) { statusMessage = msg; isStatusError = error; }
+    private void ClearStatus() { statusMessage = null; isStatusError = false; }
 
     private static string GetCategoryLabel(string category)
     {
