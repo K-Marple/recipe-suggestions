@@ -12,14 +12,6 @@
 
     <div class="sidebar-auth">
         <AuthorizeView>
-            <Authorized>
-                <form action="Account/Logout" method="post">
-                    <AntiforgeryToken />
-                    <input type="hidden" name="ReturnUrl" value="@currentUrl" />
-                    <button type="submit"><span class="nav-icon"><i class="bi bi-box-arrow-right" aria-hidden="true"></i></span> Logout</button>
-                </form>
-            </Authorized>
-
             <NotAuthorized>
                 <NavLink href="Account/Login"><span class="nav-icon"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i></span> Login</NavLink>
             </NotAuthorized>

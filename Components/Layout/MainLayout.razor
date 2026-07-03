@@ -1,5 +1,6 @@
 @inherits LayoutComponentBase
 @using System.Security.Claims
+@inject NavigationManager NavigationManager
 
 <a href="#main-content" class="skip-link">Skip to content</a>
 
@@ -11,6 +12,16 @@
 
         <div class="topbar-actions">
             <AuthorizeView>
+                <Authorized Context="authContext">
+                    <div class="topbar-user-row">
+                        <a class="topbar-profile-link" href="/profile">Hello, @GetDisplayName(authContext.User)</a>
+                        <form class="topbar-logout-form" action="Account/Logout" method="post">
+                            <AntiforgeryToken />
+                            <input type="hidden" name="ReturnUrl" value="@NavigationManager.ToBaseRelativePath(NavigationManager.Uri)" />
+                            <button type="submit" class="topbar-logout-button">Logout</button>
+                        </form>
+                    </div>
+                </Authorized>
                 <NotAuthorized>
                     <a class="topbar-login-button" href="/Account/Login">Log In</a>
                 </NotAuthorized>
