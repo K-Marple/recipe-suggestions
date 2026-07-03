@@ -1,0 +1,62 @@
+# Build artifacts
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Test results
+TestResults/
+
+# Publish and artifact folders
+publish/
+artifacts/
+
+# SQLite temporary files
+*.db-wal
+*.db-shm
+
+# NuGet packages
+*.nupkg
+.nuget/packages/
+
+# Rider
+.idea/
+
+# VS Code
+.vscode/
+
+# Resharper
+_ReSharper*/
+*.ReSharper*
+
+# dotCover
+*.dotCover
+
+# User-specific files
+*.userprefs
+*.csproj.user
+
+# Visual Studio profiler
+*.psess
+*.vsp
+*.vspx
+
+# Temporary files
+*.tmp
+*.log
+*.vspscc
+*.vssscc
+
+# Generated MSBuild files
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# OS generated files
+Thumbs.db
+Desktop.ini

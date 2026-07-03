@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="..\build\recipe-suggestions.props" />
-</Project>
