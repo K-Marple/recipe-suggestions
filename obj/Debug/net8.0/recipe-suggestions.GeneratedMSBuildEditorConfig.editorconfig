@@ -30,10 +30,6 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXENvbmZpcm1FbWFpbENoYW5nZS5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/25ave/OneDrive/Desktop/BYU-IDAHO/2026_SPRING/CSE 325/recipe-suggestions/Components/Account/Pages/ExternalLogin.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXEV4dGVybmFsTG9naW4ucmF6b3I=
-build_metadata.AdditionalFiles.CssScope = 
-
 [C:/Users/25ave/OneDrive/Desktop/BYU-IDAHO/2026_SPRING/CSE 325/recipe-suggestions/Components/Account/Pages/ForgotPassword.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXEZvcmdvdFBhc3N3b3JkLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
@@ -84,10 +80,6 @@ build_metadata.AdditionalFiles.CssScope =
 
 [C:/Users/25ave/OneDrive/Desktop/BYU-IDAHO/2026_SPRING/CSE 325/recipe-suggestions/Components/Account/Pages/Manage/EnableAuthenticator.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXE1hbmFnZVxFbmFibGVBdXRoZW50aWNhdG9yLnJhem9y
-build_metadata.AdditionalFiles.CssScope = 
-
-[C:/Users/25ave/OneDrive/Desktop/BYU-IDAHO/2026_SPRING/CSE 325/recipe-suggestions/Components/Account/Pages/Manage/ExternalLogins.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXE1hbmFnZVxFeHRlcm5hbExvZ2lucy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Users/25ave/OneDrive/Desktop/BYU-IDAHO/2026_SPRING/CSE 325/recipe-suggestions/Components/Account/Pages/Manage/GenerateRecoveryCodes.razor]
@@ -144,10 +136,6 @@ build_metadata.AdditionalFiles.CssScope =
 
 [C:/Users/25ave/OneDrive/Desktop/BYU-IDAHO/2026_SPRING/CSE 325/recipe-suggestions/Components/Account/Shared/AccountLayout.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFNoYXJlZFxBY2NvdW50TGF5b3V0LnJhem9y
-build_metadata.AdditionalFiles.CssScope = 
-
-[C:/Users/25ave/OneDrive/Desktop/BYU-IDAHO/2026_SPRING/CSE 325/recipe-suggestions/Components/Account/Shared/ExternalLoginPicker.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFNoYXJlZFxFeHRlcm5hbExvZ2luUGlja2VyLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Users/25ave/OneDrive/Desktop/BYU-IDAHO/2026_SPRING/CSE 325/recipe-suggestions/Components/Account/Shared/ManageLayout.razor]

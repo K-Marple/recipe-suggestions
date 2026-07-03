@@ -4,7 +4,6 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using recipe_suggestions.Data
 @using recipe_suggestions.Models
-@using Microsoft.JSInterop
 @using recipe_suggestions.Services
 @inject MealDbService MealDb
 @inject ApplicationDbContext Db
@@ -12,7 +11,6 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject PantryService Pantry
 @inject NavigationManager Nav
-@inject IJSRuntime JS
 
 <PageTitle>Recipe Details</PageTitle>
 
@@ -42,7 +40,8 @@ else if (meal == null)
 else
 {
     var estimate = GetRecipeEstimate();
-    var matchPercent = GetMatchPercent();
+    var showMatchPercent = Source != "browse";
+    var matchPercent = showMatchPercent ? GetMatchPercent() : 0;
     var tags = meal.GetIngredientsWithMeasures().Select(i => DisplayIngredient(i.Ingredient)).Take(5).ToList();
     var ingredients = meal.GetIngredientsWithMeasures().ToList();
     var steps = meal.GetInstructionSteps().ToList();
@@ -63,7 +62,10 @@ else
                     <h1>@meal.StrMeal</h1>
 
                     <div class="detail-meta-row">
-                        <span class="match-percent-pill">@matchPercent% Match</span>
+                        @if (showMatchPercent)
+                        {
+                            <span class="match-percent-pill">@matchPercent% Match</span>
+                        }
                         <span><i class="bi bi-clock" aria-hidden="true"></i> @estimate.TotalMinutes mins</span>
                         <span aria-hidden="true">:</span>
                         <span><i class="bi bi-bar-chart-fill" aria-hidden="true"></i> @estimate.Difficulty</span>
@@ -77,17 +79,75 @@ else
                             <span>@tag</span>
                         }
                     </div>
+
+                    <div class="detail-actions detail-hero-actions">
+                        @if (!isLoggedIn)
+                        {
+                            <a class="wire-btn primary" href="@GetLoginUrl()">Login to Save</a>
+                        }
+                        else
+                        {
+                            @if (savedRecipe == null)
+                            {
+                                <button class="wire-btn primary" @onclick="SaveMealDbRecipe">
+                                    <i class="bi bi-heart" aria-hidden="true"></i> Save Recipe
+                                </button>
+                            }
+                            else
+                            {
+                                <span class="saved-label wire-btn secondary" style="pointer-events:none;">
+                                    <i class="bi bi-check-circle" aria-hidden="true"></i> Saved
+                                </span>
+                            }
+
+                            <button class="wire-btn secondary"
+                                    disabled="@(savedRecipe == null)"
+                                    aria-pressed="@(savedRecipe?.IsFavorite == true)"
+                                    @onclick="ToggleFavorite">
+                                <i class="bi bi-bookmark" aria-hidden="true"></i>
+                                Bookmark
+                            </button>
+                        }
+                    </div>
                 </div>
             </section>
 
-            <nav class="detail-tabs" aria-label="Recipe sections">
-                <a class="active" href="#ingredients-section">Ingredients</a>
-                <a href="#instructions-section">Instructions</a>
-                <a href="#nutrition-section">Nutrition</a>
-            </nav>
+            <section class="detail-info-row">
+                <section class="detail-stats-card" aria-label="Recipe facts">
+                    <div>
+                        <span><i class="bi bi-person" aria-hidden="true"></i> Servings</span>
+                        <strong>2</strong>
+                    </div>
+                    <div>
+                        <span><i class="bi bi-clock" aria-hidden="true"></i> Prep</span>
+                        <strong>@estimate.PrepMinutes mins</strong>
+                    </div>
+                    <div>
+                        <span><i class="bi bi-basket" aria-hidden="true"></i> Cook</span>
+                        <strong>@estimate.CookMinutes mins</strong>
+                    </div>
+                    <div>
+                        <span><i class="bi bi-leaf" aria-hidden="true"></i> Cuisine</span>
+                        <strong>@(string.IsNullOrWhiteSpace(meal.StrArea) ? "Global" : meal.StrArea)</strong>
+                    </div>
+                    <div>
+                        <span><i class="bi bi-tag" aria-hidden="true"></i> Category</span>
+                        <strong>@(string.IsNullOrWhiteSpace(meal.StrCategory) ? "Dinner" : meal.StrCategory)</strong>
+                    </div>
+                </section>
+
+                <section class="cooking-tip-card">
+                    <i class="bi bi-lightbulb" aria-hidden="true"></i>
+                    <div>
+                        <h2>Cooking Tip</h2>
+                        <p>@GetCookingTip()</p>
+                    </div>
+                </section>
+            </section>
 
             <section class="detail-content-grid">
                 <div class="detail-ingredients-panel" id="ingredients-section">
+                    <h2>Ingredients</h2>
                     <div class="serving-control" aria-label="Servings">
                         <span>Servings:</span>
                         <div class="serving-stepper">
@@ -124,79 +184,7 @@ else
                     </ol>
                 </div>
             </section>
-            <div id="nutrition-section" class="nutrition-anchor" aria-hidden="true"></div>
         </main>
-
-        <aside class="recipe-detail-side">
-            <div class="detail-actions">
-                @if (!isLoggedIn)
-                {
-                    <a class="wire-btn primary" href="@GetLoginUrl()">Login to Save</a>
-                }
-                else
-                {
-                    @if (savedRecipe == null)
-                    {
-                        <button class="wire-btn primary" @onclick="SaveMealDbRecipe">
-                            <i class="bi bi-heart" aria-hidden="true"></i> Save Recipe
-                        </button>
-                    }
-                    else
-                    {
-                        <span class="saved-label wire-btn secondary" style="pointer-events:none;">
-                            <i class="bi bi-check-circle" aria-hidden="true"></i> Saved
-                        </span>
-                    }
-
-                    <button class="wire-btn secondary"
-                            disabled="@(savedRecipe == null)"
-                            aria-pressed="@(savedRecipe?.IsFavorite == true)"
-                            @onclick="ToggleFavorite">
-                        <i class="bi bi-bookmark" aria-hidden="true"></i>
-                        Bookmark
-                    </button>
-                }
-
-                <button type="button" class="wire-btn secondary icon-only-button" aria-label="More actions">
-                    <i class="bi bi-three-dots" aria-hidden="true"></i>
-                </button>
-            </div>
-
-            <section class="detail-stats-card" aria-label="Recipe facts">
-                <div>
-                    <span><i class="bi bi-person" aria-hidden="true"></i> Servings</span>
-                    <strong>2</strong>
-                </div>
-                <div>
-                    <span><i class="bi bi-clock" aria-hidden="true"></i> Prep Time</span>
-                    <strong>@estimate.PrepMinutes mins</strong>
-                </div>
-                <div>
-                    <span><i class="bi bi-basket" aria-hidden="true"></i> Cook Time</span>
-                    <strong>@estimate.CookMinutes mins</strong>
-                </div>
-                <div>
-                    <span><i class="bi bi-bar-chart-fill" aria-hidden="true"></i> Difficulty</span>
-                    <strong>@estimate.Difficulty</strong>
-                </div>
-                <div>
-                    <span><i class="bi bi-leaf" aria-hidden="true"></i> Cuisine</span>
-                    <strong>@(string.IsNullOrWhiteSpace(meal.StrArea) ? "Global" : meal.StrArea)</strong>
-                </div>
-                <div>
-                    <span><i class="bi bi-tag" aria-hidden="true"></i> Category</span>
-                    <strong>@(string.IsNullOrWhiteSpace(meal.StrCategory) ? "Dinner" : meal.StrCategory)</strong>
-                </div>
-            </section>
-
-            <section class="cooking-tip-card">
-                <i class="bi bi-lightbulb" aria-hidden="true"></i>
-                <div>
-                    <h2>Cooking Tip</h2>
-                    <p>@GetCookingTip()</p>
-                </div>
-            </section>
-        </aside>
     </div>
 }
 
@@ -206,6 +194,9 @@ else
     [Parameter]
     public string MealId { get; set; } = "";
 
+    [SupplyParameterFromQuery(Name = "source")]
+    public string? Source { get; set; }
+
     private MealDbMealDetail? meal;
     private SavedRecipe? savedRecipe;
     private RecipeMatchStats? matchStats;
@@ -214,7 +205,6 @@ else
     private bool isLoggedIn;
     private bool mealDbFailed = false;
     private string? userId;
-    private bool guestPantryLoaded;
 
     protected override async Task OnInitializedAsync()
     {
@@ -242,29 +232,6 @@ else
         }
 
         isLoading = false;
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!firstRender || guestPantryLoaded)
-            return;
-
-        guestPantryLoaded = true;
-
-        // Guests: compute have/buy against the pantry stored on this device.
-        if (!isLoggedIn && meal != null)
-        {
-            var localIds = await LocalPantryStore.GetAsync(JS);
-            if (localIds.Count > 0)
-            {
-                pantryNames = Db.Ingredients
-                    .Where(i => localIds.Contains(i.Id))
-                    .Select(i => i.Name)
-                    .ToList();
-                matchStats = RecipeMatchAnalyzer.Analyze(meal, pantryNames, pantryNames);
-                StateHasChanged();
-            }
-        }
     }
 
     private void LoadSavedRecipe()

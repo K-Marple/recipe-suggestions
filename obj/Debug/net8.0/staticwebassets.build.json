@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "yQKfuAFLGEF08kElEJTHO+raIEZQUn6JnuNOhpToN5c=",
+  "Hash": "dqtswmLw00izP9RynZAestm2aHjAy1ERSDFyind9I2U=",
   "Source": "recipe-suggestions",
   "BasePath": "_content/recipe-suggestions",
   "Mode": "Default",
@@ -91,25 +91,6 @@
       "CopyToOutputDirectory": "Never",
       "CopyToPublishDirectory": "PreserveNewest",
       "OriginalItemSpec": "wwwroot\\bootstrap\\bootstrap.min.css"
-    },
-    {
-      "Identity": "C:\\Users\\25ave\\OneDrive\\Desktop\\BYU-IDAHO\\2026_SPRING\\CSE 325\\recipe-suggestions\\wwwroot\\bootstrap\\bootstrap.min.css.map",
-      "SourceId": "recipe-suggestions",
-      "SourceType": "Discovered",
-      "ContentRoot": "C:\\Users\\25ave\\OneDrive\\Desktop\\BYU-IDAHO\\2026_SPRING\\CSE 325\\recipe-suggestions\\wwwroot\\",
-      "BasePath": "_content/recipe-suggestions",
-      "RelativePath": "bootstrap/bootstrap.min.css.map",
-      "AssetKind": "All",
-      "AssetMode": "All",
-      "AssetRole": "Primary",
-      "AssetMergeBehavior": "PreferTarget",
-      "AssetMergeSource": "",
-      "RelatedAsset": "",
-      "AssetTraitName": "",
-      "AssetTraitValue": "",
-      "CopyToOutputDirectory": "Never",
-      "CopyToPublishDirectory": "PreserveNewest",
-      "OriginalItemSpec": "wwwroot\\bootstrap\\bootstrap.min.css.map"
     },
     {
       "Identity": "C:\\Users\\25ave\\OneDrive\\Desktop\\BYU-IDAHO\\2026_SPRING\\CSE 325\\recipe-suggestions\\wwwroot\\favicon.png",

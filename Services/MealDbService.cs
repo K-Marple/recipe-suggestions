@@ -51,6 +51,42 @@ public class MealDbService
         }
     }
 
+    public async Task<List<MealDbMealSummary>> GetBrowseRecipesAsync()
+    {
+        try
+        {
+            // An empty MealDB search returns a broad catalog list that works well for browsing.
+            var result = await _http.GetFromJsonAsync<MealDbDetailResponse>("search.php?s=");
+
+            return result?.Meals?
+                .Select(meal => new MealDbMealSummary
+                {
+                    IdMeal = meal.IdMeal,
+                    StrMeal = meal.StrMeal,
+                    StrMealThumb = meal.StrMealThumb
+                })
+                .Where(meal => !string.IsNullOrWhiteSpace(meal.IdMeal))
+                .DistinctBy(meal => meal.IdMeal)
+                .OrderBy(meal => meal.StrMeal)
+                .ToList() ?? new List<MealDbMealSummary>();
+        }
+        catch (HttpRequestException)
+        {
+            LastRequestFailed = true;
+            return new List<MealDbMealSummary>();
+        }
+        catch (NotSupportedException)
+        {
+            LastRequestFailed = true;
+            return new List<MealDbMealSummary>();
+        }
+        catch (JsonException)
+        {
+            LastRequestFailed = true;
+            return new List<MealDbMealSummary>();
+        }
+    }
+
     public async Task<MealDbMealDetail?> GetMealDetailsAsync(string mealId)
     {
         if (string.IsNullOrWhiteSpace(mealId))
