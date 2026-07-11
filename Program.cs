@@ -39,7 +39,7 @@ builder.Services.AddScoped<RecipeSearchState>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(connectionString));
+    options.UseNpgsql(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = false)
@@ -54,6 +54,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    Console.WriteLine(Directory.GetCurrentDirectory());
     await db.Database.MigrateAsync();
 
     var catalog = scope.ServiceProvider.GetRequiredService<IngredientCatalogService>();
