@@ -1,16 +1,20 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace recipe_suggestions.Services;
 
 public class MealDbService
 {
     private readonly HttpClient _http;
+    private readonly IMemoryCache _cache;
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(30);
     public bool LastRequestFailed { get; private set; }
 
-    public MealDbService(HttpClient http)
+    public MealDbService(HttpClient http, IMemoryCache cache)
     {
         _http = http;
+        _cache = cache;
     }
 
     public void ResetRequestFailure()
@@ -23,16 +27,23 @@ public class MealDbService
         if (string.IsNullOrWhiteSpace(ingredient))
             return new List<MealDbMealSummary>();
 
+        var normalizedIngredient = ingredient.Trim().ToLowerInvariant();
+        var cacheKey = $"mealdb:ingredient:{normalizedIngredient}";
+        if (_cache.TryGetValue(cacheKey, out List<MealDbMealSummary>? cachedMeals) && cachedMeals != null)
+            return cachedMeals;
+
         try
         {
             // TheMealDB filter endpoint returns a compact list of meals that include one ingredient.
             // Spaces are converted to underscores because TheMealDB expects values like "chicken_breast".
-            var safeIngredient = Uri.EscapeDataString(ingredient.Trim().Replace(" ", "_").ToLowerInvariant());
+            var safeIngredient = Uri.EscapeDataString(normalizedIngredient.Replace(" ", "_"));
 
             var result = await _http.GetFromJsonAsync<MealDbSearchResponse>(
                 $"filter.php?i={safeIngredient}");
 
-            return result?.Meals ?? new List<MealDbMealSummary>();
+            var meals = result?.Meals ?? new List<MealDbMealSummary>();
+            _cache.Set(cacheKey, meals, CacheDuration);
+            return meals;
         }
         catch (HttpRequestException)
         {
@@ -53,12 +64,16 @@ public class MealDbService
 
     public async Task<List<MealDbMealSummary>> GetBrowseRecipesAsync()
     {
+        const string cacheKey = "mealdb:browse";
+        if (_cache.TryGetValue(cacheKey, out List<MealDbMealSummary>? cachedMeals) && cachedMeals != null)
+            return cachedMeals;
+
         try
         {
             // An empty MealDB search returns a broad catalog list that works well for browsing.
             var result = await _http.GetFromJsonAsync<MealDbDetailResponse>("search.php?s=");
 
-            return result?.Meals?
+            var meals = result?.Meals?
                 .Select(meal => new MealDbMealSummary
                 {
                     IdMeal = meal.IdMeal,
@@ -67,8 +82,10 @@ public class MealDbService
                 })
                 .Where(meal => !string.IsNullOrWhiteSpace(meal.IdMeal))
                 .DistinctBy(meal => meal.IdMeal)
-                .OrderBy(meal => meal.StrMeal)
                 .ToList() ?? new List<MealDbMealSummary>();
+
+            _cache.Set(cacheKey, meals, CacheDuration);
+            return meals;
         }
         catch (HttpRequestException)
         {
@@ -92,14 +109,22 @@ public class MealDbService
         if (string.IsNullOrWhiteSpace(mealId))
             return null;
 
+        var normalizedMealId = mealId.Trim();
+        var cacheKey = $"mealdb:detail:{normalizedMealId}";
+        if (_cache.TryGetValue(cacheKey, out MealDbMealDetail? cachedMeal) && cachedMeal != null)
+            return cachedMeal;
+
         try
         {
             // TheMealDB lookup endpoint returns the full instructions, metadata, and image for one meal id.
-            var safeMealId = Uri.EscapeDataString(mealId.Trim());
+            var safeMealId = Uri.EscapeDataString(normalizedMealId);
             var result = await _http.GetFromJsonAsync<MealDbDetailResponse>(
                 $"lookup.php?i={safeMealId}");
 
-            return result?.Meals?.FirstOrDefault();
+            var meal = result?.Meals?.FirstOrDefault();
+            if (meal != null)
+                _cache.Set(cacheKey, meal, CacheDuration);
+            return meal;
         }
         catch (HttpRequestException)
         {

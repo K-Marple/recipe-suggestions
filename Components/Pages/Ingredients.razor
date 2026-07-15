@@ -41,12 +41,6 @@
             <div class="search-field pantry-search-field">
                 <i class="bi bi-search" aria-hidden="true"></i>
                 <input type="search" class="form-control" placeholder="Search ingredients..." aria-label="Search ingredients" @bind="catalogSearch" @bind:event="oninput" />
-                @if (!string.IsNullOrWhiteSpace(catalogSearch))
-                {
-                    <button type="button" class="search-clear" aria-label="Clear search" @onclick="ClearCatalogSearch">
-                        <i class="bi bi-x-lg" aria-hidden="true"></i>
-                    </button>
-                }
             </div>
             <button class="wire-btn primary pantry-add-button" @onclick="OpenCustomIngredient">
                 <i class="bi bi-plus-lg" aria-hidden="true"></i>
@@ -92,10 +86,19 @@
                                     @foreach (var item in ingredients)
                                     {
                                         var selected = pantryIds.Contains(item.Id);
-                                        <button type="button" class="simple-ingredient-row @(selected ? "selected" : "")" @onclick="() => TogglePantryIngredient(item)">
-                                            <span>@GetDisplayName(item.Name)</span>
-                                            <i class="bi @(selected ? "bi-check-circle-fill" : "bi-plus-circle")" aria-hidden="true"></i>
-                                        </button>
+                                        var canRemove = !item.IsDefault && item.CreatedByUserId == userId;
+                                        <div id="ingredient-@item.Id" class="simple-ingredient-row-wrap @(highlightedIngredientId == item.Id ? "highlighted" : "")">
+                                            <button type="button" class="simple-ingredient-row @(selected ? "selected" : "")" @onclick="() => TogglePantryIngredient(item)">
+                                                <span>@GetDisplayName(item.Name)</span>
+                                                <i class="bi @(selected ? "bi-check-circle-fill" : "bi-plus-circle")" aria-hidden="true"></i>
+                                            </button>
+                                            @if (canRemove)
+                                            {
+                                                <button type="button" class="custom-ingredient-remove" aria-label="Remove @item.Name" title="Remove custom ingredient" @onclick="() => RemoveCustomIngredient(item)">
+                                                    <i class="bi bi-trash3" aria-hidden="true"></i>
+                                                </button>
+                                            }
+                                        </div>
                                     }
                                 </div>
                             }
@@ -134,14 +137,35 @@
     @if (isAddModalOpen)
     {
         <div class="modal-backdrop" @onclick="CloseModals">
-            <section class="app-modal" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
-                <button class="modal-close" @onclick="CloseModals">&times;</button>
-                <h2>Add Custom Ingredient</h2>
-                <label for="new-ingredient">Name</label>
-                <input id="new-ingredient" class="form-control" maxlength="40" @bind="newIngredientName" />
+            <section class="app-modal custom-ingredient-modal" role="dialog" aria-modal="true" aria-labelledby="custom-ingredient-title" @onclick:stopPropagation="true">
+                <button type="button" class="modal-close" aria-label="Close" @onclick="CloseModals">&times;</button>
+                <div class="custom-ingredient-icon"><i class="bi bi-plus-lg" aria-hidden="true"></i></div>
+                <h2 id="custom-ingredient-title">Add Custom Ingredient</h2>
+                <p>Add an ingredient that isn't already in the catalog. It will be saved directly to your pantry.</p>
+                <div class="custom-ingredient-field">
+                    <label for="new-ingredient">Ingredient name</label>
+                    <input id="new-ingredient" class="form-control" maxlength="40" placeholder="e.g. Gochujang" @bind="newIngredientName" @bind:event="oninput" @bind:after="ClearDuplicateMatch" />
+                </div>
+                @if (duplicateIngredient != null)
+                {
+                    <div class="custom-ingredient-duplicate" role="alert">
+                        <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+                        <div>
+                            <strong>@duplicateIngredient.Name already exists.</strong>
+                            <span>Use the existing ingredient instead of creating a duplicate.</span>
+                        </div>
+                    </div>
+                }
                 <div class="modal-actions">
                     <button class="wire-btn secondary" @onclick="CloseModals">Cancel</button>
-                    <button class="wire-btn primary" @onclick="AddCustomIngredient">Add &amp; Save to Pantry</button>
+                    @if (duplicateIngredient != null)
+                    {
+                        <button class="wire-btn primary" @onclick="ShowExistingIngredient">Show Ingredient</button>
+                    }
+                    else
+                    {
+                        <button class="wire-btn primary" disabled="@string.IsNullOrWhiteSpace(newIngredientName)" @onclick="AddCustomIngredient">Add to Pantry</button>
+                    }
                 </div>
             </section>
         </div>
@@ -162,6 +186,8 @@
     private string? userId;
     private bool isAddModalOpen;
     private string newIngredientName = "";
+    private Ingredient? duplicateIngredient;
+    private int? highlightedIngredientId;
     private HashSet<string> expandedCategories = new(StringComparer.OrdinalIgnoreCase);
 
     [SupplyParameterFromQuery(Name = "selected")]
@@ -179,8 +205,12 @@
             .OrderBy(g => GetCategorySortKey(g.Key))
             .ThenBy(g => g.Key);
 
-    private static int GetCategorySortKey(string category) =>
-        category == "Other" ? 1 : 0;
+    private static int GetCategorySortKey(string category) => category switch
+    {
+        "Custom" => -1,
+        "Other" => 1,
+        _ => 0
+    };
 
     private bool IsSearching => !string.IsNullOrWhiteSpace(catalogSearch);
 
@@ -320,17 +350,18 @@
         OpenAddModal();
     }
 
-    private void OpenAddModal() { newIngredientName = ""; isAddModalOpen = true; }
-    private void CloseModals() { isAddModalOpen = false; }
+    private void OpenAddModal() { newIngredientName = ""; duplicateIngredient = null; isAddModalOpen = true; }
+    private void CloseModals() { isAddModalOpen = false; duplicateIngredient = null; }
+    private void ClearDuplicateMatch() => duplicateIngredient = null;
 
     private async Task AddCustomIngredient()
     {
         if (userId == null || string.IsNullOrWhiteSpace(newIngredientName)) return;
 
         var name = newIngredientName.Trim();
-        if (Db.Ingredients.Any(i => i.Name.ToLower() == name.ToLower()))
+        duplicateIngredient = allIngredients.FirstOrDefault(i => i.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        if (duplicateIngredient != null)
         {
-            SetStatus("That ingredient already exists.", true);
             return;
         }
 
@@ -341,8 +372,38 @@
         searchSelectedIds.Add(ingredient.Id);
         await LoadDbPantryAsync();
         await LoadCatalogAsync();
+        catalogSearch = "";
+        expandedCategories.Add("Custom");
+        highlightedIngredientId = ingredient.Id;
         CloseModals();
         ClearStatus();
+    }
+
+    private void ShowExistingIngredient()
+    {
+        if (duplicateIngredient == null)
+            return;
+
+        catalogSearch = duplicateIngredient.Name;
+        expandedCategories.Add(GetCategoryLabel(duplicateIngredient.Category));
+        highlightedIngredientId = duplicateIngredient.Id;
+        CloseModals();
+    }
+
+    private async Task RemoveCustomIngredient(Ingredient ingredient)
+    {
+        if (userId == null || ingredient.IsDefault || ingredient.CreatedByUserId != userId)
+            return;
+
+        pantryIds.Remove(ingredient.Id);
+        searchSelectedIds.Remove(ingredient.Id);
+        Db.Ingredients.Remove(ingredient);
+        await Db.SaveChangesAsync();
+        await LoadCatalogAsync();
+        await LoadDbPantryAsync();
+
+        if (highlightedIngredientId == ingredient.Id)
+            highlightedIngredientId = null;
     }
 
     private void SetStatus(string msg, bool error) { statusMessage = msg; isStatusError = error; }

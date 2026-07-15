@@ -12,6 +12,7 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject PantryService Pantry
 @inject NavigationManager Nav
+@inject RecipeSearchState RecipeState
 
 <PageTitle>Recipe Details</PageTitle>
 
@@ -41,18 +42,17 @@ else if (meal == null)
 else
 {
     var estimate = GetRecipeEstimate();
-    var showMatchPercent = Source != "browse";
-    var matchPercent = showMatchPercent ? GetMatchPercent() : 0;
-    var tags = meal.GetIngredientsWithMeasures().Select(i => DisplayIngredient(i.Ingredient)).Take(5).ToList();
     var ingredients = meal.GetIngredientsWithMeasures().ToList();
+    var haveCount = matchStats?.HaveFromPantry ?? 0;
+    var dontHaveCount = matchStats?.BuyCount ?? ingredients.Count;
     var steps = meal.GetInstructionSteps().ToList();
 
     <div class="recipe-detail-page">
         <main class="recipe-detail-main">
-            <a class="back-link detail-back-link" href="/recipes">
+            <button type="button" class="back-link detail-back-link" @onclick="BackToResults">
                 <i class="bi bi-arrow-left" aria-hidden="true"></i>
                 Back to Results
-            </a>
+            </button>
 
             <section class="detail-hero-grid">
                 <div class="recipe-detail-image-box">
@@ -63,10 +63,7 @@ else
                     <h1>@meal.StrMeal</h1>
 
                     <div class="detail-meta-row">
-                        @if (showMatchPercent)
-                        {
-                            <span class="match-percent-pill">@matchPercent% Match</span>
-                        }
+                        <span class="match-count-pill">@haveCount have / @dontHaveCount don't have</span>
                         <span><i class="bi bi-clock" aria-hidden="true"></i> @estimate.TotalMinutes mins</span>
                         <span aria-hidden="true">:</span>
                         <span><i class="bi bi-bar-chart-fill" aria-hidden="true"></i> @estimate.Difficulty</span>
@@ -74,23 +71,18 @@ else
 
                     <p>@GetRecipeDescription()</p>
 
-                    <div class="detail-tag-row" aria-label="Recipe tags">
-                        @foreach (var tag in tags)
-                        {
-                            <span>@tag</span>
-                        }
-                    </div>
-
                     <div class="detail-actions detail-hero-actions">
                         <button type="button"
                                 class="icon-button @(savedRecipe?.IsFavorite == true ? "favorited" : "")"
                                 aria-label="@(savedRecipe?.IsFavorite == true ? "Unfavorite recipe" : "Favorite recipe")"
+                                aria-pressed="@(savedRecipe?.IsFavorite == true)"
                                 @onclick="ToggleFavorite">
                             <i class="bi @(savedRecipe?.IsFavorite == true ? "bi-heart-fill" : "bi-heart")" aria-hidden="true"></i>
                         </button>
                         <button type="button"
                                 class="icon-button @(savedRecipe != null ? "saved" : "")"
                                 aria-label="@(savedRecipe != null ? "Unsave recipe" : "Save recipe")"
+                                aria-pressed="@(savedRecipe != null)"
                                 @onclick="ToggleSaved">
                             <i class="bi @(savedRecipe != null ? "bi-bookmark-fill" : "bi-bookmark")" aria-hidden="true"></i>
                         </button>
@@ -144,7 +136,7 @@ else
                         {
                             var hasIt = pantryNames.Any(p => IngredientMatcher.Matches(p, ingredient));
                             <li class="@(hasIt ? "have" : "need")">
-                                <span class="ingredient-status" aria-hidden="true">
+                                <span class="ingredient-status" aria-label="@(hasIt ? "In your pantry" : "Not in your pantry")">
                                     <i class="bi @(hasIt ? "bi-check-lg" : "bi-circle")"></i>
                                 </span>
                                 <span>@FormatIngredientLine(measure, ingredient)</span>
@@ -170,6 +162,33 @@ else
     </div>
 }
 
+@if (showLoginPrompt)
+{
+    <div class="modal-backdrop" @onclick="CloseLoginPrompt">
+        <section class="app-modal recipe-auth-modal" role="dialog" aria-modal="true" aria-labelledby="detail-login-title" @onclick:stopPropagation="true">
+            <button type="button" class="modal-close" aria-label="Close" @onclick="CloseLoginPrompt">&times;</button>
+            <h2 id="detail-login-title">Log in to save recipes</h2>
+            <p>Log in or create an account to save and favorite this meal.</p>
+            <div class="modal-actions recipe-auth-actions">
+                <button type="button" class="wire-btn secondary" @onclick="CloseLoginPrompt">Not Now</button>
+                <button type="button" class="wire-btn primary" @onclick="GoToLogin">Log In</button>
+            </div>
+        </section>
+    </div>
+}
+
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="modal-backdrop" @onclick="CloseErrorPopup">
+        <section class="app-modal recipe-auth-modal" role="alertdialog" aria-modal="true" aria-labelledby="detail-error-title" @onclick:stopPropagation="true">
+            <button type="button" class="modal-close" aria-label="Close" @onclick="CloseErrorPopup">&times;</button>
+            <h2 id="detail-error-title">Something went wrong</h2>
+            <p>@errorMessage</p>
+            <div class="modal-actions"><button type="button" class="wire-btn primary" @onclick="CloseErrorPopup">OK</button></div>
+        </section>
+    </div>
+}
+
 </div>
 
 @code {
@@ -179,6 +198,14 @@ else
     [SupplyParameterFromQuery(Name = "source")]
     public string? Source { get; set; }
 
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
+    private string BackToResultsUrl =>
+        !string.IsNullOrWhiteSpace(ReturnUrl) && ReturnUrl.StartsWith('/') && !ReturnUrl.StartsWith("//")
+            ? ReturnUrl
+            : "/recipes";
+
     private MealDbMealDetail? meal;
     private SavedRecipe? savedRecipe;
     private RecipeMatchStats? matchStats;
@@ -187,6 +214,8 @@ else
     private bool isLoggedIn;
     private bool mealDbFailed = false;
     private string? userId;
+    private bool showLoginPrompt;
+    private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -312,8 +341,16 @@ else
             IsFavorite = false
         });
 
-        Db.SaveChanges();
-        LoadSavedRecipe();
+        try
+        {
+            await Db.SaveChangesAsync();
+            LoadSavedRecipe();
+        }
+        catch (Exception)
+        {
+            Db.ChangeTracker.Clear();
+            errorMessage = "The recipe could not be saved. Please try again.";
+        }
     }
 
     private async Task ToggleFavorite()
@@ -337,8 +374,16 @@ else
             savedRecipe.IsFavorite = !savedRecipe.IsFavorite;
         }
 
-        Db.SaveChanges();
-        LoadSavedRecipe();
+        try
+        {
+            await Db.SaveChangesAsync();
+            LoadSavedRecipe();
+        }
+        catch (Exception)
+        {
+            Db.ChangeTracker.Clear();
+            errorMessage = "Your favorite could not be updated. Please try again.";
+        }
     }
 
     private async Task ToggleSaved()
@@ -352,9 +397,18 @@ else
             return;
         }
 
-        Db.SavedRecipes.Remove(savedRecipe);
-        Db.SaveChanges();
-        savedRecipe = null;
+        try
+        {
+            Db.SavedRecipes.Remove(savedRecipe);
+            await Db.SaveChangesAsync();
+            savedRecipe = null;
+        }
+        catch (Exception)
+        {
+            Db.ChangeTracker.Clear();
+            LoadSavedRecipe();
+            errorMessage = "The saved recipe could not be updated. Please try again.";
+        }
     }
 
     private async Task<bool> EnsureLoggedInOrRedirectAsync()
@@ -364,8 +418,19 @@ else
         if (isLoggedIn && userId != null)
             return true;
 
-        Nav.NavigateTo(GetLoginUrl());
+        showLoginPrompt = true;
         return false;
+    }
+
+    private void CloseLoginPrompt() => showLoginPrompt = false;
+    private void CloseErrorPopup() => errorMessage = null;
+
+    private void GoToLogin() => Nav.NavigateTo(GetLoginUrl());
+
+    private void BackToResults()
+    {
+        RecipeState.ShowBackToBrowse = true;
+        Nav.NavigateTo(BackToResultsUrl);
     }
 
     private async Task RefreshUserStateAsync()
@@ -390,14 +455,6 @@ else
     {
         var returnUrl = Uri.EscapeDataString(Nav.Uri);
         return $"/Account/Login?ReturnUrl={returnUrl}";
-    }
-
-    private int GetMatchPercent()
-    {
-        if (matchStats == null || matchStats.TotalIngredients == 0)
-            return pantryNames.Count == 0 ? 100 : 0;
-
-        return (int)Math.Round(matchStats.HaveFromPantry * 100.0 / matchStats.TotalIngredients);
     }
 
     private DetailEstimate GetRecipeEstimate()
