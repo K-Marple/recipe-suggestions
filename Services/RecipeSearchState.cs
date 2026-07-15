@@ -6,8 +6,12 @@ public class RecipeSearchState
 {
     public string IngredientQuery { get; set; } = string.Empty;
     public string FilterQuery { get; set; } = string.Empty;
+    public string BrowseSearch { get; set; } = string.Empty;
     public bool SearchStarted { get; set; }
+    public bool NoSearchResults { get; set; }
+    public bool ShowBackToBrowse { get; set; }
     public List<int> SearchIngredientIds { get; } = new();
+    public HashSet<int> PantryIngredientIds { get; } = new();
     public List<string> PantryNames { get; } = new();
     public List<string> SearchNames { get; } = new();
     public List<EnrichedRecipeMatch> EnrichedMatches { get; } = new();
@@ -31,8 +35,12 @@ public class RecipeSearchState
 
         IngredientQuery = string.Empty;
         FilterQuery = string.Empty;
+        BrowseSearch = string.Empty;
         SearchStarted = false;
+        NoSearchResults = false;
+        ShowBackToBrowse = false;
         SearchIngredientIds.Clear();
+        PantryIngredientIds.Clear();
         PantryNames.Clear();
         SearchNames.Clear();
         EnrichedMatches.Clear();

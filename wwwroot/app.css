@@ -3665,6 +3665,15 @@ a.wire-card:hover {
     flex-wrap: wrap;
 }
 
+.recipe-suggestion-card {
+    scroll-margin-top: 24px;
+}
+
+.browse-recipe-search {
+    max-width: 520px;
+    margin-top: 14px;
+}
+
 .suggestion-tags span {
     padding: 6px 12px;
     border-radius: 7px;
@@ -4098,7 +4107,7 @@ a.wire-card:hover {
     gap: 7px;
 }
 
-.match-percent-pill {
+.match-count-pill {
     padding: 7px 12px;
     border-radius: 8px;
     background: var(--app-brown-soft);
@@ -4835,7 +4844,7 @@ a.wire-card:hover {
 .category-tab.active,
 .suggestion-tags span,
 .detail-tag-row span,
-.match-percent-pill,
+.match-count-pill,
 .profile-list-row em,
 .match-badge.full,
 .match-stat.ready {
@@ -4962,8 +4971,103 @@ a.wire-card:hover {
 }
 
 .simple-pantry-search .pantry-add-button {
-    min-height: 42px;
+    min-height: 46px;
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding-inline: 20px;
     white-space: nowrap;
+}
+
+.back-to-browse {
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--app-brown-dark);
+    font-size: 0.92rem;
+    font-weight: 850;
+}
+
+button.detail-back-link {
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.back-to-browse:hover {
+    color: var(--app-ink);
+    text-decoration: underline;
+}
+
+.custom-ingredient-modal {
+    width: min(480px, calc(100vw - 32px));
+    padding: 30px;
+    border-radius: 18px;
+}
+
+.custom-ingredient-modal > p {
+    margin: -8px 0 22px;
+    color: var(--app-muted);
+    line-height: 1.55;
+}
+
+.custom-ingredient-icon {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 16px;
+    border-radius: 14px;
+    background: var(--app-brown-soft);
+    color: var(--app-brown-dark);
+    font-size: 1.2rem;
+}
+
+.custom-ingredient-field {
+    display: grid;
+    gap: 8px;
+}
+
+.custom-ingredient-field label {
+    color: var(--app-ink);
+    font-size: 0.88rem;
+    font-weight: 800;
+}
+
+.custom-ingredient-field .form-control {
+    min-height: 48px;
+    border-radius: 10px;
+}
+
+.custom-ingredient-modal .modal-actions {
+    margin-top: 24px;
+}
+
+.custom-ingredient-duplicate {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+    margin-top: 16px;
+    padding: 12px 14px;
+    border: 1px solid #e2c78f;
+    border-radius: 10px;
+    background: #fff9e9;
+    color: #694d16;
+}
+
+.custom-ingredient-duplicate div {
+    display: grid;
+    gap: 3px;
+}
+
+.custom-ingredient-duplicate span {
+    font-size: 0.86rem;
 }
 
 .simple-pantry-layout {
@@ -5049,6 +5153,38 @@ a.wire-card:hover {
     background: #fff;
     color: var(--app-text);
     text-align: left;
+}
+
+.simple-ingredient-row-wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    border-radius: 10px;
+}
+
+.simple-ingredient-row-wrap .simple-ingredient-row {
+    width: 100%;
+}
+
+.simple-ingredient-row-wrap.highlighted {
+    outline: 3px solid color-mix(in srgb, var(--app-brown) 28%, transparent);
+    outline-offset: 2px;
+}
+
+.custom-ingredient-remove {
+    width: 44px;
+    min-height: 52px;
+    display: grid;
+    place-items: center;
+    border: 1px solid #efc7c7;
+    border-radius: 8px;
+    background: #fff8f8;
+    color: #a12d2d;
+}
+
+.custom-ingredient-remove:hover {
+    border-color: #d98d8d;
+    background: #fff0f0;
 }
 
 .simple-ingredient-row:hover {

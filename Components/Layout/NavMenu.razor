@@ -1,11 +1,12 @@
 @implements IDisposable
 @inject NavigationManager NavigationManager
+@inject recipe_suggestions.Services.RecipeSearchState RecipeState
 
 <aside class="app-sidebar">
     <nav class="sidebar-nav" aria-label="Main navigation">
         <NavLink href="" Match="NavLinkMatch.All"><span class="nav-icon"><i class="bi bi-house" aria-hidden="true"></i></span> Home</NavLink>
         <NavLink href="ingredients"><span class="nav-icon"><i class="bi bi-basket" aria-hidden="true"></i></span> My Pantry</NavLink>
-        <NavLink href="recipes"><span class="nav-icon"><i class="bi bi-journal-text" aria-hidden="true"></i></span> Recipes</NavLink>
+        <a href="/recipes" class="@(currentUrl?.StartsWith("recipes", StringComparison.OrdinalIgnoreCase) == true ? "active" : null)" @onclick="BrowseRecipes" @onclick:preventDefault="true"><span class="nav-icon"><i class="bi bi-journal-text" aria-hidden="true"></i></span> Recipes</a>
         <NavLink href="savedrecipes"><span class="nav-icon"><i class="bi bi-heart" aria-hidden="true"></i></span> Saved Recipes</NavLink>
         <NavLink href="profile"><span class="nav-icon"><i class="bi bi-person" aria-hidden="true"></i></span> Profile</NavLink>
     </nav>
@@ -21,6 +22,12 @@
 
 @code {
     private string? currentUrl;
+
+    private void BrowseRecipes()
+    {
+        RecipeState.Clear();
+        NavigationManager.NavigateTo($"/recipes?browse={Guid.NewGuid():N}");
+    }
 
     protected override void OnInitialized()
     {

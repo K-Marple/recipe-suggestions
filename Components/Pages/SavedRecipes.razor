@@ -2,14 +2,12 @@
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.JSInterop
 @using recipe_suggestions.Data
 @using recipe_suggestions.Models
 
 @inject ApplicationDbContext Db
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthStateProvider
-@inject IJSRuntime JS
 
 <PageTitle>Saved Recipes</PageTitle>
 
@@ -95,15 +93,17 @@
                                 <i class="bi @(saved.IsFavorite ? "bi-heart-fill" : "bi-heart")" aria-hidden="true"></i>
                             </button>
 
+                            <button type="button"
+                                    class="icon-button saved"
+                                    aria-label="Unsave @saved.MealDbName"
+                                    aria-pressed="true"
+                                    @onclick="() => ToggleSaved(saved)">
+                                <i class="bi bi-bookmark-fill" aria-hidden="true"></i>
+                            </button>
+
                             <a class="wire-btn primary" href="/mealdbrecipe/@saved.MealDbId">
                                 View
                             </a>
-
-                            <button type="button"
-                                    class="wire-btn danger"
-                                    @onclick="() => ConfirmDelete(saved)">
-                                Remove
-                            </button>
                         </div>
                     </div>
                 </article>
@@ -169,13 +169,8 @@
         LoadRecipes();
     }
 
-    private async Task ConfirmDelete(SavedRecipe recipe)
+    private void ToggleSaved(SavedRecipe recipe)
     {
-        var confirmed = await JS.InvokeAsync<bool>("confirm", $"Remove \"{recipe.MealDbName}\" from your saved recipes?");
-
-        if (!confirmed)
-            return;
-
         Db.SavedRecipes.Remove(recipe);
         Db.SaveChanges();
         LoadRecipes();

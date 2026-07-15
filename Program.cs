@@ -13,6 +13,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IdentityUserAccessor>();
 builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
@@ -36,6 +37,7 @@ builder.Services.AddHttpClient<IngredientCatalogService>(client =>
 
 builder.Services.AddScoped<PantryService>();
 builder.Services.AddScoped<RecipeSearchState>();
+builder.Services.AddHostedService<CatalogSyncHostedService>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -59,7 +61,6 @@ using (var scope = app.Services.CreateScope())
 
     var catalog = scope.ServiceProvider.GetRequiredService<IngredientCatalogService>();
     await catalog.EnsureCatalogSeededAsync();
-    await catalog.SyncMealDbCatalogAsync();
 }
 
 // Configure the HTTP request pipeline.
@@ -77,6 +78,8 @@ else
 app.UseHttpsRedirection();
 
 app.UseStaticFiles();
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 
 app.MapRazorComponents<App>()
