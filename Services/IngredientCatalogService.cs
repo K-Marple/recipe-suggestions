@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using recipe_suggestions.Data;
 using recipe_suggestions.Models;
 
@@ -8,22 +9,35 @@ namespace recipe_suggestions.Services;
 
 public class IngredientCatalogService
 {
+    private static readonly TimeSpan CatalogCacheDuration = TimeSpan.FromMinutes(10);
+
     private readonly ApplicationDbContext _db;
     private readonly HttpClient _http;
+    private readonly IMemoryCache _cache;
 
-    public IngredientCatalogService(ApplicationDbContext db, HttpClient http)
+    public IngredientCatalogService(ApplicationDbContext db, HttpClient http, IMemoryCache cache)
     {
         _db = db;
         _http = http;
+        _cache = cache;
     }
+
+    public void InvalidateCatalogCache(string? userId)
+    {
+        _cache.Remove(CatalogCacheKey(userId));
+        _cache.Remove(CatalogCacheKey(null));
+    }
+
+    private static string CatalogCacheKey(string? userId) => $"ingredient-catalog:{userId ?? "default"}";
 
     public async Task EnsureCatalogSeededAsync()
     {
-        if (await _db.Ingredients.AnyAsync())
+        if (await _db.Ingredients.AsNoTracking().AnyAsync())
             return;
 
         _db.Ingredients.AddRange(GetDefaultCatalog());
         await _db.SaveChangesAsync();
+        InvalidateCatalogCache(null);
     }
 
     public async Task SyncMealDbCatalogAsync()
@@ -42,25 +56,32 @@ public class IngredientCatalogService
                 return;
 
             var existing = await _db.Ingredients
+                .AsNoTracking()
                 .Select(i => i.Name.ToLower())
                 .ToListAsync();
 
             var existingSet = existing.ToHashSet();
+            var added = false;
 
             foreach (var name in remoteNames)
             {
-                if (existingSet.Contains(name!.ToLower()))
+                if (existingSet.Contains(name.ToLowerInvariant()))
                     continue;
 
                 _db.Ingredients.Add(new Ingredient
                 {
-                    Name = name!,
-                    Category = GuessCategory(name!),
+                    Name = name,
+                    Category = GuessCategory(name),
                     IsDefault = true
                 });
+                added = true;
             }
 
+            if (!added)
+                return;
+
             await _db.SaveChangesAsync();
+            InvalidateCatalogCache(null);
         }
         catch
         {
@@ -70,26 +91,43 @@ public class IngredientCatalogService
 
     public async Task<List<Ingredient>> GetCatalogAsync(string? userId, string? search = null, string? category = null)
     {
+        var hasFilters = !string.IsNullOrWhiteSpace(search) || (!string.IsNullOrWhiteSpace(category) && category != "All");
+        if (!hasFilters)
+        {
+            var cached = await _cache.GetOrCreateAsync(CatalogCacheKey(userId), async entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = CatalogCacheDuration;
+                return await QueryCatalogAsync(userId, null, null);
+            });
+
+            return cached?.ToList() ?? new List<Ingredient>();
+        }
+
+        return await QueryCatalogAsync(userId, search, category);
+    }
+
+    private async Task<List<Ingredient>> QueryCatalogAsync(string? userId, string? search, string? category)
+    {
         var query = _db.Ingredients
-            .Where(i => i.IsDefault || i.CreatedByUserId == userId)
-            .AsQueryable();
+            .AsNoTracking()
+            .Where(i => i.IsDefault || i.CreatedByUserId == userId);
 
         if (!string.IsNullOrWhiteSpace(search))
-        {
-            query = query.Where(i => EF.Functions.Like(i.Name, $"%{search.Trim()}%"));
-        }
+            query = query.Where(i => EF.Functions.ILike(i.Name, $"%{search.Trim()}%"));
 
         if (!string.IsNullOrWhiteSpace(category) && category != "All")
-        {
             query = query.Where(i => i.Category == category);
-        }
 
-        return await query.OrderBy(i => i.Category).ThenBy(i => i.Name).ToListAsync();
+        return await query
+            .OrderBy(i => i.Category)
+            .ThenBy(i => i.Name)
+            .ToListAsync();
     }
 
     public async Task<List<string>> GetCategoriesAsync(string? userId)
     {
         return await _db.Ingredients
+            .AsNoTracking()
             .Where(i => i.IsDefault || i.CreatedByUserId == userId)
             .Select(i => i.Category)
             .Distinct()

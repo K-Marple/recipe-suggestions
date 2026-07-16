@@ -10,20 +10,23 @@
             <span>ScrapeThePantry</span>
         </a>
 
+        <AuthorizeView>
+            <Authorized Context="authContext">
+                <a class="topbar-hello-link" href="/profile">Hello, @GetDisplayName(authContext.User)</a>
+            </Authorized>
+        </AuthorizeView>
+
         <div class="topbar-actions">
             <AuthorizeView>
                 <Authorized Context="authContext">
-                    <div class="topbar-user-row">
-                        <a class="topbar-profile-link" href="/profile">Hello, @GetDisplayName(authContext.User)</a>
-                        <form class="topbar-logout-form" action="Account/Logout" method="post">
-                            <AntiforgeryToken />
-                            <input type="hidden" name="ReturnUrl" value="@NavigationManager.ToBaseRelativePath(NavigationManager.Uri)" />
-                            <button type="submit" class="topbar-logout-button">Logout</button>
-                        </form>
-                    </div>
+                    <form class="topbar-logout-form" action="Account/Logout" method="post">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="ReturnUrl" value="@NavigationManager.ToBaseRelativePath(NavigationManager.Uri)" />
+                        <button type="submit" class="topbar-logout-button">Log out</button>
+                    </form>
                 </Authorized>
                 <NotAuthorized>
-                    <a class="topbar-login-button" href="/Account/Login">Log In</a>
+                    <a class="topbar-login-button" href="@LoginHref">Log in / Sign up</a>
                 </NotAuthorized>
             </AuthorizeView>
         </div>
@@ -46,11 +49,21 @@
 </div>
 
 @code {
+    private string LoginHref =>
+        $"/Account/Login?ReturnUrl={Uri.EscapeDataString("/" + NavigationManager.ToBaseRelativePath(NavigationManager.Uri))}";
+
     private static string GetDisplayName(ClaimsPrincipal user)
     {
-        var email = user.FindFirst(ClaimTypes.Email)?.Value
-            ?? user.Identity?.Name
-            ?? "User";
+        var display = user.FindFirst("DisplayName")?.Value
+            ?? user.FindFirst(ClaimTypes.Name)?.Value
+            ?? user.Identity?.Name;
+
+        if (!string.IsNullOrWhiteSpace(display) && !display.Contains('@'))
+            return display;
+
+        var email = user.FindFirst(ClaimTypes.Email)?.Value ?? display;
+        if (string.IsNullOrWhiteSpace(email))
+            return "User";
 
         var atIndex = email.IndexOf('@');
         return atIndex > 0 ? email[..atIndex] : email;

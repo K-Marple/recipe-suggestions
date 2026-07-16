@@ -31,10 +31,19 @@
             <ValidationSummary class="text-danger" role="alert" />
 
             <div class="auth-field">
+                <label for="username">Username</label>
+                <div class="auth-input-wrap">
+                    <i class="bi bi-person field-icon" aria-hidden="true"></i>
+                    <InputText id="username" @bind-Value="Input.UserName" class="form-control" autocomplete="username" aria-required="true" placeholder="Choose a username" />
+                </div>
+                <ValidationMessage For="() => Input.UserName" class="text-danger" />
+            </div>
+
+            <div class="auth-field">
                 <label for="email">Email Address</label>
                 <div class="auth-input-wrap">
-                    <i class="bi bi-envelope" aria-hidden="true"></i>
-                    <InputText id="email" @bind-Value="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="Enter your email" />
+                    <i class="bi bi-envelope field-icon" aria-hidden="true"></i>
+                    <InputText id="email" @bind-Value="Input.Email" class="form-control" autocomplete="email" aria-required="true" placeholder="Enter your email" />
                 </div>
                 <ValidationMessage For="() => Input.Email" class="text-danger" />
             </div>
@@ -42,8 +51,11 @@
             <div class="auth-field">
                 <label for="password">Password</label>
                 <div class="auth-input-wrap">
-                    <i class="bi bi-lock" aria-hidden="true"></i>
+                    <i class="bi bi-lock field-icon" aria-hidden="true"></i>
                     <InputText id="password" type="password" @bind-Value="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" placeholder="Create a password" />
+                    <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false" onclick="togglePasswordVisibility(this)">
+                        <i class="bi bi-eye" aria-hidden="true"></i>
+                    </button>
                 </div>
                 <small>Must be at least 6 characters long</small>
                 <ValidationMessage For="() => Input.Password" class="text-danger" />
@@ -52,8 +64,11 @@
             <div class="auth-field">
                 <label for="confirm-password">Confirm Password</label>
                 <div class="auth-input-wrap">
-                    <i class="bi bi-lock" aria-hidden="true"></i>
+                    <i class="bi bi-lock field-icon" aria-hidden="true"></i>
                     <InputText id="confirm-password" type="password" @bind-Value="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="Confirm your password" />
+                    <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false" onclick="togglePasswordVisibility(this)">
+                        <i class="bi bi-eye" aria-hidden="true"></i>
+                    </button>
                 </div>
                 <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger" />
             </div>
@@ -84,10 +99,14 @@
     public async Task RegisterUser(EditContext editContext)
     {
         var user = CreateUser();
+        var userName = Input.UserName.Trim();
 
-        await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
+        await UserStore.SetUserNameAsync(user, userName, CancellationToken.None);
         var emailStore = GetEmailStore();
         await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
+        user.DisplayName = userName;
+        user.EmailConfirmed = true;
+
         var result = await UserManager.CreateAsync(user, Input.Password);
 
         if (!result.Succeeded)
@@ -97,22 +116,6 @@
         }
 
         Logger.LogInformation("User created a new account with password.");
-
-        var userId = await UserManager.GetUserIdAsync(user);
-        var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
-        code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-        var callbackUrl = NavigationManager.GetUriWithQueryParameters(
-            NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
-            new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code, ["returnUrl"] = ReturnUrl });
-
-        await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
-
-        if (UserManager.Options.SignIn.RequireConfirmedAccount)
-        {
-            RedirectManager.RedirectTo(
-                "Account/RegisterConfirmation",
-                new() { ["email"] = Input.Email, ["returnUrl"] = ReturnUrl });
-        }
 
         await SignInManager.SignInAsync(user, isPersistent: false);
         RedirectManager.RedirectTo(ReturnUrl);
@@ -142,6 +145,12 @@
 
     private sealed class InputModel
     {
+        [Required]
+        [StringLength(60, MinimumLength = 2)]
+        [RegularExpression(@"^[a-zA-Z0-9._\-]+$", ErrorMessage = "Username can only use letters, numbers, dots, underscores, and hyphens.")]
+        [Display(Name = "Username")]
+        public string UserName { get; set; } = "";
+
         [Required]
         [EmailAddress]
         [Display(Name = "Email")]

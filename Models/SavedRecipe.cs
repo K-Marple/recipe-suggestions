@@ -12,5 +12,5 @@ public class SavedRecipe
 
     public bool IsFavorite { get; set; }
 
-    public DateTime SavedAt { get; set; } = DateTime.Now;
+    public DateTime SavedAt { get; set; } = DateTime.UtcNow;
 }

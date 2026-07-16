@@ -113,12 +113,74 @@ public class MealDbMealDetail
         if (string.IsNullOrWhiteSpace(StrInstructions))
             yield break;
 
-        var lines = StrInstructions
-            .Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => line.Trim())
-            .Where(line => !string.IsNullOrWhiteSpace(line));
+        var normalized = StrInstructions
+            .Replace("\r\n", "\n")
+            .Replace('\r', '\n')
+            .Trim();
 
-        foreach (var line in lines)
-            yield return line;
+        IEnumerable<string> chunks;
+        if (normalized.Contains('\n'))
+        {
+            chunks = normalized.Split('\n', StringSplitOptions.None);
+        }
+        else
+        {
+            // Single block: split before "Step N" / "1." markers when present.
+            chunks = System.Text.RegularExpressions.Regex.Split(
+                    normalized,
+                    @"(?=(?:Step\s*\d+|\d+\s*[\.\)\:]))",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+                .Where(chunk => !string.IsNullOrWhiteSpace(chunk));
+        }
+
+        foreach (var chunk in chunks)
+        {
+            var step = CleanInstructionStep(chunk);
+            if (!string.IsNullOrWhiteSpace(step))
+                yield return step;
+        }
+    }
+
+    private static string CleanInstructionStep(string value)
+    {
+        var step = value.Trim();
+        if (step.Length == 0)
+            return "";
+
+        // "Step 3" / "STEP 3." alone is a number label, not instruction text.
+        if (System.Text.RegularExpressions.Regex.IsMatch(
+                step,
+                @"^(?:step\s*)?\d+\s*[\.\)\:\-]*$",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            return "";
+
+        // "Step 1: mix..." / "Step 1 mix..." / "1. mix..." → keep only the instruction.
+        step = System.Text.RegularExpressions.Regex.Replace(
+            step,
+            @"^step\s*\d+\s*[\.\)\:\-]?\s*",
+            "",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        step = System.Text.RegularExpressions.Regex.Replace(
+            step,
+            @"^\d+\s*[\.\)\:\-]+\s+",
+            "");
+        step = System.Text.RegularExpressions.Regex.Replace(step, @"^[\-\*\u2022\u2023\u25E6]+\s*", "");
+
+        step = step.Trim();
+
+        if (step.Length == 0)
+            return "";
+
+        // Anything that is still only a step label.
+        if (System.Text.RegularExpressions.Regex.IsMatch(
+                step,
+                @"^(?:step\s*)?\d+\s*[\.\)\:\-]*$",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            return "";
+
+        if (step.All(ch => char.IsWhiteSpace(ch) || char.IsPunctuation(ch) || char.IsSymbol(ch)))
+            return "";
+
+        return step;
     }
 }

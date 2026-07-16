@@ -6,7 +6,15 @@ using recipe_suggestions.Components.Account;
 using recipe_suggestions.Data;
 using recipe_suggestions.Services;
 
+// Load local secrets from .env before configuration is built.
+var envPath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+if (File.Exists(envPath))
+    DotNetEnv.Env.Load(envPath);
+
 var builder = WebApplication.CreateBuilder(args);
+
+// Npgsql requires UTC for timestamp with time zone columns.
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -37,15 +45,24 @@ builder.Services.AddHttpClient<IngredientCatalogService>(client =>
 
 builder.Services.AddScoped<PantryService>();
 builder.Services.AddScoped<RecipeSearchState>();
+builder.Services.AddScoped<GuestPantrySession>();
 builder.Services.AddHostedService<CatalogSyncHostedService>();
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+    throw new InvalidOperationException(
+        "Connection string 'DefaultConnection' is missing. Set ConnectionStrings__DefaultConnection in your .env file.");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = false)
+builder.Services.AddIdentityCore<ApplicationUser>(options =>
+    {
+        options.SignIn.RequireConfirmedAccount = false;
+        options.User.RequireUniqueEmail = true;
+    })
     .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddClaimsPrincipalFactory<ApplicationUserClaimsPrincipalFactory>()
     .AddSignInManager()
     .AddDefaultTokenProviders();
 

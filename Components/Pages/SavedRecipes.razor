@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using recipe_suggestions.Data
 @using recipe_suggestions.Models
+@using recipe_suggestions.Services
 
 @inject ApplicationDbContext Db
 @inject UserManager<ApplicationUser> UserManager
@@ -11,100 +12,124 @@
 
 <PageTitle>Saved Recipes</PageTitle>
 
-<div class="wireframe-page compact-page saved-screen">
+<div class="wireframe-page compact-page saved-screen @(isLoggedIn ? "" : "auth-gate-screen")">
 
-    <section class="wireframe-section mb-4 page-heading">
-        <div>
-            <h1>Saved Recipes</h1>
-            <p>Your saved and favorite recipes.</p>
-        </div>
+    @if (isLoggedIn)
+    {
+        <section class="saved-hero">
+            <div>
+                <h1>Saved Recipes</h1>
+                <p>Recipes you’ve bookmarked and marked as favorites.</p>
+            </div>
+        </section>
 
-        <div class="button-row saved-tabs" role="tablist" aria-label="Filter saved recipes">
+        <div class="saved-tab-switch" role="tablist" aria-label="Filter saved recipes">
             <button type="button"
-                    class="tab-pill @(activeTab == SavedTab.All ? "active" : "")"
+                    class="saved-tab @(activeTab == SavedTab.All ? "active" : "")"
                     role="tab"
                     aria-selected="@(activeTab == SavedTab.All)"
                     @onclick="() => SetTab(SavedTab.All)">
-                All Recipes (@savedRecipes.Count)
+                <i class="bi @(activeTab == SavedTab.All ? "bi-bookmark-fill" : "bi-bookmark")" aria-hidden="true"></i>
+                <span>All Recipes</span>
+                <em>@savedRecipes.Count</em>
             </button>
             <button type="button"
-                    class="tab-pill @(activeTab == SavedTab.Favorites ? "active" : "")"
+                    class="saved-tab @(activeTab == SavedTab.Favorites ? "active" : "")"
                     role="tab"
                     aria-selected="@(activeTab == SavedTab.Favorites)"
                     @onclick="() => SetTab(SavedTab.Favorites)">
-                Favorites (@savedRecipes.Count(r => r.IsFavorite))
+                <i class="bi @(activeTab == SavedTab.Favorites ? "bi-heart-fill" : "bi-heart")" aria-hidden="true"></i>
+                <span>Favorites</span>
+                <em>@FavoriteCount</em>
             </button>
         </div>
-    </section>
+    }
 
     @if (!isLoggedIn)
     {
-        <section class="wireframe-section empty-state">
-            <div class="empty-art"><i class="bi bi-person-lock" aria-hidden="true"></i></div>
-            <h2>Login required</h2>
-            <p>Login to save and favorite recipes.</p>
-            <a class="wire-btn primary" href="/Account/Login">Login</a>
+        <section class="auth-gate-card" aria-label="Sign in to continue">
+            <div class="auth-gate-icon" aria-hidden="true">
+                <i class="bi bi-bookmark"></i>
+            </div>
+            <h1>Saved Recipes</h1>
+            <p>Sign in to keep bookmarks and favorites in one place.</p>
+            <div class="auth-gate-actions">
+                <a class="wire-btn primary" href="/Account/Login?ReturnUrl=%2Fsavedrecipes">Log in</a>
+                <a class="wire-btn secondary" href="/Account/Register?ReturnUrl=%2Fsavedrecipes">Create account</a>
+            </div>
         </section>
     }
     else if (!FilteredRecipes.Any())
     {
-        <section class="wireframe-section empty-state">
-            <div class="empty-art"><i class="bi bi-heart" aria-hidden="true"></i></div>
+        <section class="wireframe-section empty-state saved-empty">
+            <div class="empty-art">
+                <i class="bi @(activeTab == SavedTab.Favorites ? "bi-heart-fill" : "bi-bookmark-fill")" aria-hidden="true"></i>
+            </div>
             @if (activeTab == SavedTab.Favorites)
             {
                 <h2>No favorites yet</h2>
-                <p>Mark recipes as favorites from the recipe details page or search results.</p>
+                <p>Tap the heart on a recipe to keep your favorites here.</p>
             }
             else
             {
                 <h2>No saved recipes yet</h2>
-                <p>Start by choosing ingredients and saving recipes you like.</p>
+                <p>Bookmark recipes from search results or recipe details to find them again here.</p>
             }
             <a class="wire-btn primary" href="/ingredients">Find Recipes</a>
         </section>
     }
     else
     {
-        <div class="recipe-result-grid">
+        <div class="saved-recipe-list" role="list">
             @foreach (var saved in FilteredRecipes)
             {
-                <article class="recipe-wire-card">
-                    @if (!string.IsNullOrWhiteSpace(saved.MealDbImageUrl))
-                    {
-                        <img src="@saved.MealDbImageUrl"
-                             class="recipe-card-image"
-                             alt="Photo of @saved.MealDbName" />
-                    }
+                <article class="saved-recipe-card @(saved.IsFavorite ? "is-favorite" : "")" role="listitem">
+                    <a class="saved-recipe-media" href="/mealdbrecipe/@saved.MealDbId" aria-label="View @saved.MealDbName">
+                        @if (!string.IsNullOrWhiteSpace(saved.MealDbImageUrl))
+                        {
+                            <img src="@saved.MealDbImageUrl" alt="" />
+                        }
+                        else
+                        {
+                            <div class="saved-recipe-fallback"><i class="bi bi-egg-fried" aria-hidden="true"></i></div>
+                        }
+                        <span class="saved-status-badge @(saved.IsFavorite ? "favorite" : "saved")">
+                            <i class="bi @(saved.IsFavorite ? "bi-heart-fill" : "bi-bookmark-fill")" aria-hidden="true"></i>
+                            @(saved.IsFavorite ? "Favorite" : "Saved")
+                        </span>
+                    </a>
 
-                    <div class="recipe-card-body">
-                        <h2>@saved.MealDbName</h2>
-
-                        <div class="recipe-meta-row">
-                            <span>@(saved.IsFavorite ? "Favorite" : "Saved")</span>
-                            <span>@saved.SavedAt.ToShortDateString()</span>
+                    <div class="saved-recipe-body">
+                        <h2>
+                            <a href="/mealdbrecipe/@saved.MealDbId">@saved.MealDbName</a>
+                        </h2>
+                        <div class="saved-recipe-meta">
+                            <span><i class="bi bi-clock" aria-hidden="true"></i> @GetApproxTime(saved)</span>
+                            <span aria-hidden="true">:</span>
+                            <span><i class="bi bi-calendar3" aria-hidden="true"></i> Saved @saved.SavedAt.ToLocalTime().ToString("MMM d, yyyy")</span>
                         </div>
+                    </div>
 
-                        <div class="recipe-card-actions">
-                            <button type="button"
-                                    class="icon-button @(saved.IsFavorite ? "favorited" : "")"
-                                    aria-label="@(saved.IsFavorite ? $"Remove {saved.MealDbName} from favorites" : $"Favorite {saved.MealDbName}")"
-                                    aria-pressed="@saved.IsFavorite"
-                                    @onclick="() => ToggleFavorite(saved)">
-                                <i class="bi @(saved.IsFavorite ? "bi-heart-fill" : "bi-heart")" aria-hidden="true"></i>
-                            </button>
+                    <div class="saved-recipe-actions">
+                        <button type="button"
+                                class="icon-button recipe-icon-button @(saved.IsFavorite ? "favorited" : "")"
+                                aria-label="@(saved.IsFavorite ? $"Remove {saved.MealDbName} from favorites" : $"Favorite {saved.MealDbName}")"
+                                aria-pressed="@saved.IsFavorite"
+                                @onclick="() => ToggleFavorite(saved)">
+                            <i class="bi @(saved.IsFavorite ? "bi-heart-fill" : "bi-heart")" aria-hidden="true"></i>
+                        </button>
 
-                            <button type="button"
-                                    class="icon-button saved"
-                                    aria-label="Unsave @saved.MealDbName"
-                                    aria-pressed="true"
-                                    @onclick="() => ToggleSaved(saved)">
-                                <i class="bi bi-bookmark-fill" aria-hidden="true"></i>
-                            </button>
+                        <button type="button"
+                                class="icon-button recipe-icon-button saved"
+                                aria-label="Unsave @saved.MealDbName"
+                                aria-pressed="true"
+                                @onclick="() => ToggleSaved(saved)">
+                            <i class="bi bi-bookmark-fill" aria-hidden="true"></i>
+                        </button>
 
-                            <a class="wire-btn primary" href="/mealdbrecipe/@saved.MealDbId">
-                                View
-                            </a>
-                        </div>
+                        <a class="wire-btn primary view-recipe-btn" href="/mealdbrecipe/@saved.MealDbId">
+                            View Recipe
+                        </a>
                     </div>
                 </article>
             }
@@ -123,6 +148,8 @@
 
     [SupplyParameterFromQuery(Name = "tab")]
     public string? TabQuery { get; set; }
+
+    private int FavoriteCount => savedRecipes.Count(r => r.IsFavorite);
 
     private IEnumerable<SavedRecipe> FilteredRecipes =>
         activeTab == SavedTab.Favorites
@@ -175,4 +202,8 @@
         Db.SaveChanges();
         LoadRecipes();
     }
+
+    private static string GetApproxTime(SavedRecipe saved) =>
+        RecipeTimeEstimator.FormatMinutes(
+            RecipeTimeEstimator.Estimate(8, saved.MealDbName).TotalMinutes);
 }

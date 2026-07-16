@@ -13,6 +13,7 @@
 @inject PantryService Pantry
 @inject NavigationManager Nav
 @inject RecipeSearchState RecipeState
+@inject GuestPantrySession GuestPantry
 
 <PageTitle>Recipe Details</PageTitle>
 
@@ -45,11 +46,13 @@ else
     var ingredients = meal.GetIngredientsWithMeasures().ToList();
     var haveCount = matchStats?.HaveFromPantry ?? 0;
     var dontHaveCount = matchStats?.BuyCount ?? ingredients.Count;
-    var steps = meal.GetInstructionSteps().ToList();
+    var steps = meal.GetInstructionSteps()
+        .Where(step => !string.IsNullOrWhiteSpace(step))
+        .ToList();
 
     <div class="recipe-detail-page">
         <main class="recipe-detail-main">
-            <button type="button" class="back-link detail-back-link" @onclick="BackToResults">
+            <button type="button" class="back-to-browse detail-back-link" @onclick="BackToResults">
                 <i class="bi bi-arrow-left" aria-hidden="true"></i>
                 Back to Results
             </button>
@@ -64,7 +67,7 @@ else
 
                     <div class="detail-meta-row">
                         <span class="match-count-pill">@haveCount have / @dontHaveCount don't have</span>
-                        <span><i class="bi bi-clock" aria-hidden="true"></i> @estimate.TotalMinutes mins</span>
+                        <span><i class="bi bi-clock" aria-hidden="true"></i> @RecipeTimeEstimator.FormatMinutes(estimate.TotalMinutes)</span>
                         <span aria-hidden="true">:</span>
                         <span><i class="bi bi-bar-chart-fill" aria-hidden="true"></i> @estimate.Difficulty</span>
                     </div>
@@ -98,14 +101,14 @@ else
                     </div>
                     <div>
                         <span><i class="bi bi-clock" aria-hidden="true"></i> Prep</span>
-                        <strong>@estimate.PrepMinutes mins</strong>
+                        <strong>@RecipeTimeEstimator.FormatMinutes(estimate.PrepMinutes)</strong>
                     </div>
                     <div>
                         <span><i class="bi bi-basket" aria-hidden="true"></i> Cook</span>
-                        <strong>@estimate.CookMinutes mins</strong>
+                        <strong>@RecipeTimeEstimator.FormatMinutes(estimate.CookMinutes)</strong>
                     </div>
                     <div>
-                        <span><i class="bi bi-leaf" aria-hidden="true"></i> Cuisine</span>
+                        <span><i class="bi bi-globe" aria-hidden="true"></i> Cuisine</span>
                         <strong>@(string.IsNullOrWhiteSpace(meal.StrArea) ? "Global" : meal.StrArea)</strong>
                     </div>
                     <div>
@@ -147,15 +150,22 @@ else
 
                 <div class="detail-instructions-panel" id="instructions-section">
                     <h2>Instructions</h2>
-                    <ol class="detail-instruction-list">
-                        @for (var i = 0; i < steps.Count; i++)
-                        {
-                            <li>
-                                <span>@(i + 1)</span>
-                                <p>@steps[i]</p>
-                            </li>
-                        }
-                    </ol>
+                    @if (steps.Count == 0)
+                    {
+                        <p class="detail-instructions-empty">No instructions were provided for this recipe.</p>
+                    }
+                    else
+                    {
+                        <ol class="detail-instruction-list">
+                            @for (var i = 0; i < steps.Count; i++)
+                            {
+                                <li>
+                                    <span>@(i + 1)</span>
+                                    <p>@steps[i]</p>
+                                </li>
+                            }
+                        </ol>
+                    }
                 </div>
             </section>
         </main>
@@ -234,12 +244,34 @@ else
             userId = appUser?.Id;
             LoadSavedRecipe();
 
-            if (userId != null && meal != null)
+            if (userId != null)
             {
-                var pantry = await Pantry.GetPantryIngredientsAsync(userId);
-                pantryNames = pantry.Select(i => i.Name).ToList();
-                matchStats = RecipeMatchAnalyzer.Analyze(meal, pantryNames, pantryNames);
+                await MergeGuestSelectionsIntoPantryAsync();
+
+                if (meal != null)
+                {
+                    var pantry = await Pantry.GetPantryIngredientsAsync(userId);
+                    pantryNames = pantry.Select(i => i.Name).ToList();
+                }
             }
+        }
+        else
+        {
+            // Guest temporary pantry from the pantry page; fall back to search selection if needed.
+            pantryNames = RecipeState.PantryNames.ToList();
+            if (pantryNames.Count == 0 && RecipeState.SearchNames.Count > 0)
+                pantryNames = RecipeState.SearchNames.ToList();
+
+            if (RecipeState.PantryIngredientIds.Count > 0 || RecipeState.SearchIngredientIds.Count > 0)
+                await GuestPantry.SaveAsync(RecipeState.PantryIngredientIds.Concat(RecipeState.SearchIngredientIds));
+        }
+
+        if (meal != null)
+        {
+            matchStats = RecipeMatchAnalyzer.Analyze(
+                meal,
+                pantryNames,
+                RecipeState.SearchNames.Count > 0 ? RecipeState.SearchNames : pantryNames);
         }
 
         isLoading = false;
@@ -345,6 +377,7 @@ else
         {
             await Db.SaveChangesAsync();
             LoadSavedRecipe();
+            SyncRecipeState();
         }
         catch (Exception)
         {
@@ -378,6 +411,7 @@ else
         {
             await Db.SaveChangesAsync();
             LoadSavedRecipe();
+            SyncRecipeState();
         }
         catch (Exception)
         {
@@ -402,6 +436,7 @@ else
             Db.SavedRecipes.Remove(savedRecipe);
             await Db.SaveChangesAsync();
             savedRecipe = null;
+            SyncRecipeState();
         }
         catch (Exception)
         {
@@ -409,6 +444,25 @@ else
             LoadSavedRecipe();
             errorMessage = "The saved recipe could not be updated. Please try again.";
         }
+    }
+
+    private void SyncRecipeState()
+    {
+        if (string.IsNullOrWhiteSpace(MealId))
+            return;
+
+        if (savedRecipe == null)
+        {
+            RecipeState.SavedMealIds.Remove(MealId);
+            RecipeState.FavoritedMealIds.Remove(MealId);
+            return;
+        }
+
+        RecipeState.SavedMealIds.Add(MealId);
+        if (savedRecipe.IsFavorite)
+            RecipeState.FavoritedMealIds.Add(MealId);
+        else
+            RecipeState.FavoritedMealIds.Remove(MealId);
     }
 
     private async Task<bool> EnsureLoggedInOrRedirectAsync()
@@ -425,7 +479,29 @@ else
     private void CloseLoginPrompt() => showLoginPrompt = false;
     private void CloseErrorPopup() => errorMessage = null;
 
-    private void GoToLogin() => Nav.NavigateTo(GetLoginUrl());
+    private async Task GoToLogin()
+    {
+        if (RecipeState.PantryIngredientIds.Count > 0 || RecipeState.SearchIngredientIds.Count > 0)
+            await GuestPantry.SaveAsync(RecipeState.PantryIngredientIds.Concat(RecipeState.SearchIngredientIds));
+
+        Nav.NavigateTo(GetLoginUrl());
+    }
+
+    private async Task MergeGuestSelectionsIntoPantryAsync()
+    {
+        if (userId == null)
+            return;
+
+        var pending = new List<int>();
+        pending.AddRange(await GuestPantry.TakeAsync());
+        pending.AddRange(RecipeState.PantryIngredientIds);
+        pending.AddRange(RecipeState.SearchIngredientIds);
+
+        if (pending.Count == 0)
+            return;
+
+        await Pantry.AddManyToPantryAsync(userId, pending);
+    }
 
     private void BackToResults()
     {
@@ -459,13 +535,12 @@ else
 
     private DetailEstimate GetRecipeEstimate()
     {
-        var ingredientCount = meal?.GetIngredientsWithMeasures().Count() ?? 8;
-        var total = ingredientCount <= 6 ? 20 : ingredientCount <= 11 ? 30 : 40;
-        var prep = Math.Max(10, total / 2);
-        var cook = Math.Max(10, total - prep);
-        var difficulty = ingredientCount >= 12 ? "Medium" : "Easy";
+        var estimate = RecipeTimeEstimator.Estimate(
+            meal?.GetIngredientsWithMeasures().Count() ?? 8,
+            meal?.StrMeal,
+            meal?.StrCategory);
 
-        return new DetailEstimate(prep, cook, prep + cook, difficulty);
+        return new DetailEstimate(estimate.PrepMinutes, estimate.CookMinutes, estimate.TotalMinutes, estimate.Difficulty);
     }
 
     private string GetRecipeDescription()

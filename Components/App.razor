@@ -7,7 +7,7 @@
     <base href="/" />
     <link rel="stylesheet" href="bootstrap/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
-    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="app.css?v=20260715w" />
     <link rel="icon" type="image/png" href="favicon.png" />
     <HeadOutlet />
 </head>
@@ -15,6 +15,29 @@
 <body>
     <Routes />
     <script src="_framework/blazor.web.js"></script>
+    <script>
+        window.pantryScrollToIngredient = function (id) {
+            const el = document.getElementById('ingredient-' + id);
+            if (!el) return;
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        };
+
+        window.togglePasswordVisibility = function (btn) {
+            const wrap = btn.closest('.password-input-wrap, .auth-input-wrap');
+            const input = wrap?.querySelector('input');
+            if (!input) return;
+
+            const showing = input.getAttribute('type') === 'password';
+            input.setAttribute('type', showing ? 'text' : 'password');
+            btn.setAttribute('aria-label', showing ? 'Hide password' : 'Show password');
+            btn.setAttribute('aria-pressed', showing ? 'true' : 'false');
+
+            const icon = btn.querySelector('i');
+            if (icon) {
+                icon.className = showing ? 'bi bi-eye-slash' : 'bi bi-eye';
+            }
+        };
+    </script>
 </body>
 
 </html>

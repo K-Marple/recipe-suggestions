@@ -12,6 +12,7 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
 @inject RecipeSearchState RecipeState
+@inject GuestPantrySession GuestPantry
 
 <PageTitle>Recipe Suggestions</PageTitle>
 
@@ -49,15 +50,16 @@
     }
     else if (searchIngredientIds.Count == 0 || noSearchResults)
     {
-        <section class="wireframe-section empty-state">
-            @if (noSearchResults)
-            {
-                <div class="empty-art"><i class="bi bi-search" aria-hidden="true"></i></div>
-                <h2>No recipes found</h2>
-                <p>We couldn't find recipes for those ingredients. Browse other recipes below.</p>
-            }
-            else
-            {
+        @if (noSearchResults)
+        {
+            <div class="search-fallback-note" role="status">
+                <i class="bi bi-info-circle" aria-hidden="true"></i>
+                <span>None of these recipes use your ingredients. Browse recipes below instead.</span>
+            </div>
+        }
+        else
+        {
+            <section class="wireframe-section empty-state">
                 <div class="empty-art"><i class="bi bi-basket" aria-hidden="true"></i></div>
                 <h2>Choose how to find recipes</h2>
                 @if (pantryIngredientIds.Count > 0)
@@ -73,8 +75,8 @@
                     <p>Add ingredients to your pantry before searching, or browse recipes below.</p>
                     <a class="wire-btn primary" href="/ingredients">Add Ingredients to Pantry</a>
                 }
-            }
-        </section>
+            </section>
+        }
 
         @if (!enrichedMatches.Any())
         {
@@ -87,7 +89,9 @@
         {
             <section class="browse-heading">
                 <h2>Browse Recipes</h2>
-                <p>Popular and easy recipes you can look through without selecting pantry ingredients.</p>
+                <p>@(noSearchResults
+                    ? "Popular recipes you can browse while you adjust your pantry."
+                    : "Popular and easy recipes you can look through without selecting pantry ingredients.")</p>
                 <div class="search-field browse-recipe-search">
                     <i class="bi bi-search" aria-hidden="true"></i>
                     <input type="search"
@@ -123,21 +127,29 @@
                     <article id="recipe-@item.Meal.IdMeal" class="recipe-suggestion-card @(stats.CanMakeWithPantry ? "can-make" : "")" role="link" tabindex="0" @onclick="() => OpenRecipe(item.Meal.IdMeal)">
                         <div class="suggestion-image-wrap">
                             <img src="@item.Meal.StrMealThumb" alt="Photo of @item.Meal.StrMeal" class="suggestion-image" />
-                            <span class="suggestion-match-badge browse-badge">Browse</span>
+                            <span class="suggestion-match-badge @(ShowHaveBadge ? "" : "browse-badge")">@GetBrowseOrMatchSummary(stats)</span>
                         </div>
 
                         <div class="suggestion-content">
                             <h2>@item.Meal.StrMeal</h2>
                             <div class="suggestion-meta">
-                                <span><i class="bi bi-clock" aria-hidden="true"></i> @estimate.Minutes mins</span>
+                                <span><i class="bi bi-clock" aria-hidden="true"></i> @RecipeTimeEstimator.FormatMinutes(estimate.Minutes)</span>
                                 <span aria-hidden="true">:</span>
                                 <span><i class="bi bi-bar-chart-fill" aria-hidden="true"></i> @estimate.Difficulty</span>
                             </div>
 
                             <div class="suggestion-tags">
-                                @foreach (var ingredient in GetIngredientTags(item).Take(5))
+                                @{
+                                    var tags = GetOrderedIngredientTags(item).ToList();
+                                    var visibleTags = tags.Take(5).ToList();
+                                }
+                                @foreach (var ingredient in visibleTags)
                                 {
-                                    <span>@ingredient</span>
+                                    <span class="@(IsOwnedIngredient(ingredient) ? "owned" : null)">@ingredient</span>
+                                }
+                                @if (tags.Count > 5)
+                                {
+                                    <span class="tag-more" aria-hidden="true">...</span>
                                 }
                             </div>
                         </div>
@@ -194,15 +206,23 @@
                     <div class="suggestion-content">
                         <h2>@item.Meal.StrMeal</h2>
                         <div class="suggestion-meta">
-                            <span><i class="bi bi-clock" aria-hidden="true"></i> @estimate.Minutes mins</span>
+                            <span><i class="bi bi-clock" aria-hidden="true"></i> @RecipeTimeEstimator.FormatMinutes(estimate.Minutes)</span>
                             <span aria-hidden="true">:</span>
                             <span><i class="bi bi-bar-chart-fill" aria-hidden="true"></i> @estimate.Difficulty</span>
                         </div>
 
                         <div class="suggestion-tags">
-                            @foreach (var ingredient in GetIngredientTags(item).Take(5))
+                            @{
+                                var tags = GetOrderedIngredientTags(item).ToList();
+                                var visibleTags = tags.Take(5).ToList();
+                            }
+                            @foreach (var ingredient in visibleTags)
                             {
-                                <span>@ingredient</span>
+                                <span class="@(IsOwnedIngredient(ingredient) ? "owned" : null)">@ingredient</span>
+                            }
+                            @if (tags.Count > 5)
+                            {
+                                <span class="tag-more" aria-hidden="true">...</span>
                             }
                         </div>
                     </div>
@@ -447,19 +467,23 @@
             return;
         }
 
-        var searchIngredients = Db.Ingredients
+        var searchIngredientsById = Db.Ingredients
             .Where(i => searchIngredientIds.Contains(i.Id))
+            .ToDictionary(i => i.Id);
+
+        var searchIngredients = searchIngredientIds
+            .Where(id => searchIngredientsById.ContainsKey(id))
+            .Select(id => searchIngredientsById[id])
             .ToList();
 
         RecipeState.SearchNames.Clear();
         RecipeState.SearchNames.AddRange(searchIngredients.Select(i => i.Name));
 
-        // For guests without a saved pantry, treat the selected ingredients as the pantry
-        // so the have/buy counts are still meaningful.
-        if (pantryNames.Count == 0)
+        // Guests: ensure pantry ownership mirrors selected pantry when Find Recipes set it.
+        if (!isLoggedIn && RecipeState.PantryNames.Count == 0 && searchIngredients.Count > 0)
         {
-            RecipeState.PantryNames.Clear();
-            RecipeState.PantryNames.AddRange(RecipeState.SearchNames);
+            RecipeState.PantryNames.AddRange(searchIngredients.Select(i => i.Name));
+            RecipeState.PantryIngredientIds.UnionWith(searchIngredientIds);
         }
 
         loadingProgress = "Searching meals from TheMealDB...";
@@ -525,6 +549,27 @@
 
         await HydrateNextBatchAsync(InitialPageSize);
 
+        // MealDB sometimes returns filter matches that do not actually contain the ingredient text.
+        if (!noSearchResults && enrichedMatches.Count == 0)
+        {
+            noSearchResults = true;
+            recipeCandidates.Clear();
+            nextCandidateIndex = 0;
+
+            var browseMeals = RecipeState.BrowseRecipesCache.Any()
+                ? RecipeState.BrowseRecipesCache
+                : await MealDb.GetBrowseRecipesAsync();
+
+            if (!RecipeState.BrowseRecipesCache.Any())
+                RecipeState.BrowseRecipesCache.AddRange(browseMeals);
+
+            recipeCandidates.AddRange(browseMeals
+                .OrderBy(_ => Random.Shared.Next())
+                .Select(browseMeal => new EnrichedRecipeMatch { Meal = browseMeal }));
+
+            await HydrateNextBatchAsync(InitialPageSize);
+        }
+
         isLoading = false;
         StateHasChanged();
     }
@@ -537,15 +582,23 @@
         if (!isLoggedIn)
         {
             userId = null;
-            RecipeState.PantryIngredientIds.Clear();
             RecipeState.FavoritedMealIds.Clear();
             RecipeState.SavedMealIds.Clear();
+            // Keep guest temporary pantry from the Ingredients page (never invent it from search).
+            if (RecipeState.PantryIngredientIds.Count == 0)
+                RecipeState.PantryNames.Clear();
+
+            if (RecipeState.PantryIngredientIds.Count > 0 || searchIngredientIds.Count > 0)
+                await GuestPantry.SaveAsync(RecipeState.PantryIngredientIds.Concat(searchIngredientIds));
+
             return;
         }
 
         userId = (await UserManager.GetUserAsync(auth.User))?.Id;
         if (userId == null)
             return;
+
+        await MergeGuestSelectionsIntoPantryAsync();
 
         var pantry = await Pantry.GetPantryIngredientsAsync(userId);
         RecipeState.PantryNames.Clear();
@@ -556,44 +609,88 @@
         RefreshSavedRecipeState();
     }
 
+    private async Task MergeGuestSelectionsIntoPantryAsync()
+    {
+        if (userId == null)
+            return;
+
+        var pending = new List<int>();
+        pending.AddRange(await GuestPantry.TakeAsync());
+        pending.AddRange(searchIngredientIds);
+        pending.AddRange(RecipeState.PantryIngredientIds);
+        pending.AddRange(RecipeState.SearchIngredientIds);
+
+        if (pending.Count == 0)
+            return;
+
+        await Pantry.AddManyToPantryAsync(userId, pending);
+    }
+
     private async Task HydrateNextBatchAsync(int count)
     {
-        var batch = recipeCandidates
-            .Skip(nextCandidateIndex)
-            .Take(count)
-            .ToList();
-
-        nextCandidateIndex += batch.Count;
-
-        var hydrateTasks = batch.Select(async candidate =>
-        {
-            candidate.Detail = await MealDb.GetMealDetailsAsync(candidate.Meal.IdMeal);
-            return candidate;
-        });
-
-        var hydratedCandidates = await Task.WhenAll(hydrateTasks);
         var currentMatches = RecipeState.EnrichedMatches.ToList();
+        var added = 0;
+        var isIngredientSearch = searchIngredientIds.Count > 0 && !noSearchResults;
 
-        foreach (var candidate in hydratedCandidates)
+        while (added < count && nextCandidateIndex < recipeCandidates.Count)
         {
-            if (candidate.Detail != null)
+            var take = Math.Min(count - added, recipeCandidates.Count - nextCandidateIndex);
+            var batch = recipeCandidates
+                .Skip(nextCandidateIndex)
+                .Take(take)
+                .ToList();
+
+            nextCandidateIndex += batch.Count;
+
+            var hydratedCandidates = await Task.WhenAll(batch.Select(async candidate =>
             {
+                candidate.Detail = await MealDb.GetMealDetailsAsync(candidate.Meal.IdMeal);
+                return candidate;
+            }));
+
+            foreach (var candidate in hydratedCandidates)
+            {
+                if (candidate.Detail == null)
+                    continue;
+
                 candidate.Stats = RecipeMatchAnalyzer.Analyze(candidate.Detail, pantryNames, searchNames);
+
+                // Ingredient search results must actually contain searched ingredients.
+                if (isIngredientSearch && candidate.Stats.HaveFromSearch == 0)
+                    continue;
+
                 currentMatches.Add(candidate);
+                added++;
+
+                if (added >= count)
+                    break;
             }
         }
 
         RecipeState.EnrichedMatches.Clear();
-        RecipeState.EnrichedMatches.AddRange(searchIngredientIds.Count == 0 || noSearchResults
-            ? currentMatches
-            : currentMatches
-                .OrderBy(m => m.Stats.BuyCount)
-                .ThenByDescending(m => m.Stats.HaveFromPantry)
-                .ThenBy(m => m.Meal.StrMeal));
+        RecipeState.EnrichedMatches.AddRange(SortMatches(currentMatches, isIngredientSearch));
 
         allCount = RecipeState.EnrichedMatches.Count;
-        pantryCompleteCount = currentMatches.Count(m => m.Stats.CanMakeWithPantry);
-        searchCompleteCount = currentMatches.Count(m => m.Stats.CanMakeWithSearch);
+        pantryCompleteCount = RecipeState.EnrichedMatches.Count(m => m.Stats.CanMakeWithPantry);
+        searchCompleteCount = RecipeState.EnrichedMatches.Count(m => m.Stats.CanMakeWithSearch);
+    }
+
+    private IEnumerable<EnrichedRecipeMatch> SortMatches(IEnumerable<EnrichedRecipeMatch> matches, bool isIngredientSearch)
+    {
+        // Most have → least to buy → earlier pantry/search list matches first.
+        var ordered = matches
+            .OrderByDescending(m => m.Stats.HaveFromPantry)
+            .ThenBy(m => m.Stats.BuyCount)
+            .ThenByDescending(m => m.Stats.PriorityScore);
+
+        if (isIngredientSearch)
+        {
+            return ordered
+                .ThenByDescending(m => m.SearchHitCount)
+                .ThenBy(m => m.Meal.StrMeal);
+        }
+
+        return ordered.ThenBy(m => m.Meal.StrMeal);
     }
 
     private async Task LoadMoreAsync()
@@ -670,6 +767,19 @@
     private bool IsFavorited(string mealId) => favoritedMealIds.Contains(mealId);
     private bool IsSaved(string mealId) => savedMealIds.Contains(mealId);
 
+    private bool ShowHaveBadge => pantryNames.Count > 0 || searchNames.Count > 0;
+
+    private string GetBrowseOrMatchSummary(RecipeMatchStats stats)
+    {
+        if (!ShowHaveBadge)
+            return "Browse";
+
+        return GetIngredientSummary(stats);
+    }
+
+    private bool IsOwnedIngredient(string ingredient) =>
+        pantryNames.Any(p => IngredientMatcher.Matches(p, ingredient));
+
     private static string GetIngredientSummary(RecipeMatchStats stats)
     {
         if (stats.TotalIngredients == 0)
@@ -680,19 +790,16 @@
 
     private RecipeEstimate GetRecipeEstimate(EnrichedRecipeMatch match)
     {
-        var minutes = GetEstimatedMinutes(match);
-        var difficulty = match.Stats.TotalIngredients >= 12 || match.Stats.BuyCount >= 5
-            ? "Medium"
-            : "Easy";
-        return new RecipeEstimate(minutes, difficulty);
+        var estimate = RecipeTimeEstimator.Estimate(
+            Math.Max(match.Stats.TotalIngredients, 4),
+            match.Meal.StrMeal,
+            match.Detail?.StrCategory);
+
+        return new RecipeEstimate(estimate.TotalMinutes, estimate.Difficulty);
     }
 
-    private int GetEstimatedMinutes(EnrichedRecipeMatch match)
-    {
-        var total = Math.Max(match.Stats.TotalIngredients, 4);
-        var baseMinutes = total <= 6 ? 10 : total <= 10 ? 20 : 30;
-        return baseMinutes + (Math.Abs(match.Meal.StrMeal.GetHashCode()) % 2) * 5;
-    }
+    private int GetEstimatedMinutes(EnrichedRecipeMatch match) =>
+        GetRecipeEstimate(match).Minutes;
 
     private IEnumerable<string> GetIngredientTags(EnrichedRecipeMatch match)
     {
@@ -705,6 +812,14 @@
         }
 
         return match.MatchedSearchNames.Select(DisplayIngredient);
+    }
+
+    private IEnumerable<string> GetOrderedIngredientTags(EnrichedRecipeMatch match)
+    {
+        var tags = GetIngredientTags(match).ToList();
+        return tags
+            .Where(IsOwnedIngredient)
+            .Concat(tags.Where(tag => !IsOwnedIngredient(tag)));
     }
 
     private static string DisplayIngredient(string name) =>
@@ -812,13 +927,19 @@
 
     private void CloseErrorPopup() => errorMessage = null;
 
-    private void GoToLogin()
+    private async Task GoToLogin()
     {
+        if (searchIngredientIds.Count > 0 || RecipeState.PantryIngredientIds.Count > 0)
+            await GuestPantry.SaveAsync(RecipeState.PantryIngredientIds.Concat(searchIngredientIds));
+
         Nav.NavigateTo($"/Account/Login?ReturnUrl={GetCurrentReturnUrl()}");
     }
 
-    private void GoToRegister()
+    private async Task GoToRegister()
     {
+        if (searchIngredientIds.Count > 0 || RecipeState.PantryIngredientIds.Count > 0)
+            await GuestPantry.SaveAsync(RecipeState.PantryIngredientIds.Concat(searchIngredientIds));
+
         Nav.NavigateTo($"/Account/Register?ReturnUrl={GetCurrentReturnUrl()}");
     }
 

@@ -53,6 +53,11 @@ _ReSharper*/
 *.vspscc
 *.vssscc
 
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
 # Generated MSBuild files
 project.lock.json
 project.fragment.lock.json

@@ -28,9 +28,12 @@
         <ValidationSummary class="text-danger" role="alert" />
         @if (requirePassword)
         {
-            <div class="form-floating mb-3">
+            <div class="form-floating mb-3 password-input-wrap">
                 <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="Please enter your password." />
                 <label for="password" class="form-label">Password</label>
+                <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false" onclick="togglePasswordVisibility(this)">
+                    <i class="bi bi-eye" aria-hidden="true"></i>
+                </button>
                 <ValidationMessage For="() => Input.Password" class="text-danger" />
             </div>
         }

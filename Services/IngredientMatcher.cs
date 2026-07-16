@@ -26,17 +26,16 @@ public static class IngredientMatcher
         if (pantry == recipe)
             return true;
 
-        if (pantry.Contains(recipe, StringComparison.Ordinal) ||
-            recipe.Contains(pantry, StringComparison.Ordinal))
+        // Prefer whole-word / whole-phrase containment (avoids egg↔eggplant, pea↔peanut).
+        if (ContainsAsWords(recipe, pantry) || ContainsAsWords(pantry, recipe))
             return true;
 
-        var pantryTokens = pantry.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var recipeTokens = recipe.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-        if (pantryTokens.Length == 0 || recipeTokens.Length == 0)
+        var pantryTokens = SignificantTokens(pantry);
+        var recipeTokens = SignificantTokens(recipe);
+        if (pantryTokens.Count == 0 || recipeTokens.Count == 0)
             return false;
 
-        return pantryTokens.Any(pt => recipeTokens.Any(rt => pt == rt || pt.StartsWith(rt) || rt.StartsWith(pt)));
+        return pantryTokens.Any(pt => recipeTokens.Contains(pt));
     }
 
     public static int CountMatches(IEnumerable<string> pantryNames, IEnumerable<string> recipeIngredients)
@@ -47,4 +46,38 @@ public static class IngredientMatcher
         return recipeList.Count(recipeIngredient =>
             pantryList.Any(pantryName => Matches(pantryName, recipeIngredient)));
     }
+
+    /// <summary>
+    /// Higher score when earlier items in the ordered pantry/search list appear in the recipe.
+    /// </summary>
+    public static int PriorityScore(IReadOnlyList<string> orderedOwnedNames, IEnumerable<string> recipeIngredients)
+    {
+        if (orderedOwnedNames.Count == 0)
+            return 0;
+
+        var recipeList = recipeIngredients.ToList();
+        var score = 0;
+        var weight = orderedOwnedNames.Count;
+
+        for (var i = 0; i < orderedOwnedNames.Count; i++)
+        {
+            if (recipeList.Any(recipeIngredient => Matches(orderedOwnedNames[i], recipeIngredient)))
+                score += weight - i;
+        }
+
+        return score;
+    }
+
+    private static bool ContainsAsWords(string haystack, string needle)
+    {
+        if (needle.Length < 3 || !haystack.Contains(needle, StringComparison.Ordinal))
+            return false;
+
+        return $" {haystack} ".Contains($" {needle} ", StringComparison.Ordinal);
+    }
+
+    private static HashSet<string> SignificantTokens(string value) =>
+        value.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Where(token => token.Length >= 3)
+            .ToHashSet(StringComparer.Ordinal);
 }
