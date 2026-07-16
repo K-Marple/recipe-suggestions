@@ -13,6 +13,13 @@ if (File.Exists(envPath))
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Port binding (for deployment)
+builder.WebHost.ConfigureKestrel(options =>
+{
+    var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+    options.ListenAnyIP(int.Parse(port));
+});
+
 // Npgsql requires UTC for timestamp with time zone columns.
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
