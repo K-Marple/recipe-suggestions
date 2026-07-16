@@ -4,7 +4,7 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy all, restore dependencies, build and publish
-COPY ...
+COPY . .
 RUN dotnet restore "recipe-suggestions.csproj"
 RUN dotnet publish "recipe-suggestions.csproj" -c Release -o /app/publish
 
