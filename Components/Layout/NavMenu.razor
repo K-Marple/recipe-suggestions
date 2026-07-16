@@ -8,16 +8,8 @@
         <NavLink href="ingredients"><span class="nav-icon"><i class="bi bi-basket" aria-hidden="true"></i></span> My Pantry</NavLink>
         <a href="/recipes" class="@(currentUrl?.StartsWith("recipes", StringComparison.OrdinalIgnoreCase) == true ? "active" : null)" @onclick="BrowseRecipes" @onclick:preventDefault="true"><span class="nav-icon"><i class="bi bi-journal-text" aria-hidden="true"></i></span> Recipes</a>
         <NavLink href="savedrecipes"><span class="nav-icon"><i class="bi bi-heart" aria-hidden="true"></i></span> Saved Recipes</NavLink>
-        <NavLink href="profile"><span class="nav-icon"><i class="bi bi-person" aria-hidden="true"></i></span> Profile</NavLink>
+        <NavLink href="profile"><span class="nav-icon"><i class="bi bi-person" aria-hidden="true"></i></span> Account</NavLink>
     </nav>
-
-    <div class="sidebar-auth">
-        <AuthorizeView>
-            <NotAuthorized>
-                <NavLink href="Account/Login"><span class="nav-icon"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i></span> Login</NavLink>
-            </NotAuthorized>
-        </AuthorizeView>
-    </div>
 </aside>
 
 @code {

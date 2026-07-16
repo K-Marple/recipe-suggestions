@@ -16,18 +16,18 @@ public class PantryService
     public async Task<List<Ingredient>> GetPantryIngredientsAsync(string userId)
     {
         return await _db.PantryItems
+            .AsNoTracking()
             .Where(p => p.UserId == userId)
-            .Include(p => p.Ingredient)
-            .Where(p => p.Ingredient != null)
-            .OrderBy(p => p.Ingredient!.Name)
-            .Select(p => p.Ingredient)
-            .OfType<Ingredient>()
+            .Select(p => p.Ingredient!)
+            .Where(i => i != null)
+            .OrderBy(i => i.Name)
             .ToListAsync();
     }
 
     public async Task<HashSet<int>> GetPantryIngredientIdsAsync(string userId)
     {
         var ids = await _db.PantryItems
+            .AsNoTracking()
             .Where(p => p.UserId == userId)
             .Select(p => p.IngredientId)
             .ToListAsync();
@@ -38,12 +38,17 @@ public class PantryService
     public async Task<bool> IsInPantryAsync(string userId, int ingredientId)
     {
         return await _db.PantryItems
+            .AsNoTracking()
             .AnyAsync(p => p.UserId == userId && p.IngredientId == ingredientId);
     }
 
     public async Task AddToPantryAsync(string userId, int ingredientId)
     {
-        if (await IsInPantryAsync(userId, ingredientId))
+        var exists = await _db.PantryItems
+            .AsNoTracking()
+            .AnyAsync(p => p.UserId == userId && p.IngredientId == ingredientId);
+
+        if (exists)
             return;
 
         _db.PantryItems.Add(new PantryItem
@@ -62,11 +67,13 @@ public class PantryService
             return;
 
         var existing = await _db.PantryItems
+            .AsNoTracking()
             .Where(p => p.UserId == userId && ids.Contains(p.IngredientId))
             .Select(p => p.IngredientId)
             .ToListAsync();
 
         var validIds = await _db.Ingredients
+            .AsNoTracking()
             .Where(i => ids.Contains(i.Id))
             .Select(i => i.Id)
             .ToListAsync();
@@ -86,18 +93,15 @@ public class PantryService
 
     public async Task RemoveFromPantryAsync(string userId, int ingredientId)
     {
-        var item = await _db.PantryItems
-            .FirstOrDefaultAsync(p => p.UserId == userId && p.IngredientId == ingredientId);
-
-        if (item == null)
-            return;
-
-        _db.PantryItems.Remove(item);
-        await _db.SaveChangesAsync();
+        await _db.PantryItems
+            .Where(p => p.UserId == userId && p.IngredientId == ingredientId)
+            .ExecuteDeleteAsync();
     }
 
     public async Task<int> GetPantryCountAsync(string userId)
     {
-        return await _db.PantryItems.CountAsync(p => p.UserId == userId);
+        return await _db.PantryItems
+            .AsNoTracking()
+            .CountAsync(p => p.UserId == userId);
     }
 }

@@ -28,7 +28,7 @@ public class RecipeSearchState
     public string? UserId { get; set; }
     public List<MealDbMealSummary> BrowseRecipesCache { get; } = new();
 
-    public void Clear(bool keepBrowseCache = true)
+    public void Clear(bool keepBrowseCache = true, bool keepPantry = true)
     {
         if (!keepBrowseCache)
             BrowseRecipesCache.Clear();
@@ -40,8 +40,11 @@ public class RecipeSearchState
         NoSearchResults = false;
         ShowBackToBrowse = false;
         SearchIngredientIds.Clear();
-        PantryIngredientIds.Clear();
-        PantryNames.Clear();
+        if (!keepPantry)
+        {
+            PantryIngredientIds.Clear();
+            PantryNames.Clear();
+        }
         SearchNames.Clear();
         EnrichedMatches.Clear();
         RecipeCandidates.Clear();

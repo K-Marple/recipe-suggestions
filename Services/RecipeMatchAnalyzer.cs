@@ -17,6 +17,7 @@ public class RecipeMatchAnalyzer
         var haveFromPantry = IngredientMatcher.CountMatches(pantryList, recipeIngredients);
         var haveFromSearch = IngredientMatcher.CountMatches(searchList, recipeIngredients);
         var total = recipeIngredients.Count;
+        var orderedOwned = searchList.Count > 0 ? searchList : pantryList;
 
         return new RecipeMatchStats
         {
@@ -24,6 +25,7 @@ public class RecipeMatchAnalyzer
             HaveFromPantry = haveFromPantry,
             HaveFromSearch = haveFromSearch,
             BuyCount = Math.Max(0, total - haveFromPantry),
+            PriorityScore = IngredientMatcher.PriorityScore(orderedOwned, recipeIngredients),
             MissingFromPantry = recipeIngredients
                 .Where(ri => !pantryList.Any(p => IngredientMatcher.Matches(p, ri)))
                 .ToList(),
@@ -39,6 +41,7 @@ public class RecipeMatchStats
     public int HaveFromPantry { get; set; }
     public int HaveFromSearch { get; set; }
     public int BuyCount { get; set; }
+    public int PriorityScore { get; set; }
     public List<string> MissingFromPantry { get; set; } = new();
     public bool CanMakeWithPantry { get; set; }
     public bool CanMakeWithSearch { get; set; }

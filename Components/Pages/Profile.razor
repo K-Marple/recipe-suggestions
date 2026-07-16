@@ -1,5 +1,6 @@
 @page "/profile"
 @rendermode InteractiveServer
+@using System.ComponentModel.DataAnnotations
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.Components.Authorization
@@ -7,93 +8,171 @@
 @using recipe_suggestions.Services
 @inject ApplicationDbContext Db
 @inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
 @inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
 
-<PageTitle>Profile</PageTitle>
+<PageTitle>Account</PageTitle>
 
-<div class="wireframe-page compact-page profile-screen">
+<div class="wireframe-page compact-page profile-screen @(isLoggedIn ? "" : "auth-gate-screen")">
 
-    <section class="page-heading">
-        <h1>Profile</h1>
-        <p>Manage your account and view your activity.</p>
-    </section>
+    @if (isLoggedIn)
+    {
+        <section class="page-heading">
+            <h1>Account</h1>
+        </section>
+    }
 
     @if (!isLoggedIn)
     {
-        <section class="wireframe-section empty-state">
-            <div class="empty-art"><i class="bi bi-person-lock" aria-hidden="true"></i></div>
-            <h2>Login required</h2>
-            <p>Login to view your profile.</p>
-            <a class="wire-btn primary" href="/Account/Login">Login</a>
+        <section class="auth-gate-card" aria-label="Sign in to continue">
+            <div class="auth-gate-icon" aria-hidden="true">
+                <i class="bi bi-person-circle"></i>
+            </div>
+            <h1>Account</h1>
+            <p>Sign in to manage your details, password, and activity.</p>
+            <div class="auth-gate-actions">
+                <a class="wire-btn primary" href="/Account/Login?ReturnUrl=%2Fprofile">Log in</a>
+                <a class="wire-btn secondary" href="/Account/Register?ReturnUrl=%2Fprofile">Create account</a>
+            </div>
         </section>
     }
     else
     {
         <div class="profile-dashboard">
-            <section class="profile-top-row">
-                <div class="profile-identity-card">
-                    <div class="profile-avatar" aria-hidden="true">
-                        <i class="bi bi-person-fill"></i>
-                    </div>
-                    <div>
-                        <h2>@displayName</h2>
-                        <p>@email</p>
-                        <a class="wire-btn secondary profile-edit-btn" href="/Account/Manage">
-                            <i class="bi bi-gear" aria-hidden="true"></i>
-                            Manage account
-                        </a>
+            <section class="profile-settings-card profile-settings-full" aria-label="Account settings">
+                <div class="profile-settings-header profile-settings-header-row">
+                    <div class="profile-settings-identity">
+                        <div class="profile-avatar profile-avatar-sm" aria-hidden="true">
+                            <i class="bi bi-person-fill"></i>
+                        </div>
+                        <div>
+                            <h2>Account Settings</h2>
+                            <p>Signed in as <strong>@userName</strong></p>
+                        </div>
                     </div>
                 </div>
 
-                <section class="profile-stats-strip" aria-label="Profile statistics">
-                    <a href="/savedrecipes">
-                        <i class="bi bi-bookmark-fill" aria-hidden="true"></i>
-                        <strong>@savedCount</strong>
-                        <span>Saved Recipes</span>
-                    </a>
-                    <a href="/savedrecipes?tab=favorites">
-                        <i class="bi bi-heart-fill" aria-hidden="true"></i>
-                        <strong>@favoriteCount</strong>
-                        <span>Favorites</span>
-                    </a>
-                    <a href="/ingredients">
-                        <i class="bi bi-leaf" aria-hidden="true"></i>
-                        <strong>@customIngredientCount</strong>
-                        <span>Custom Ingredients</span>
-                    </a>
-                </section>
+                @if (!string.IsNullOrWhiteSpace(profileMessage))
+                {
+                    <div class="profile-settings-status @(profileMessageIsError ? "error" : "success")" role="status">@profileMessage</div>
+                }
+
+                <div class="profile-settings-body">
+                    <div class="profile-field-grid">
+                        <div class="profile-field">
+                            <label for="profile-username">Username</label>
+                            <input id="profile-username" class="form-control" maxlength="60" autocomplete="username" @bind="editUserName" @bind:event="oninput" />
+                        </div>
+
+                        <div class="profile-field">
+                            <label for="profile-email">Email</label>
+                            <input id="profile-email" type="email" class="form-control" autocomplete="email" @bind="editEmail" @bind:event="oninput" />
+                        </div>
+                    </div>
+
+                    <button type="button" class="wire-btn primary profile-save-btn" disabled="@isSavingProfile" @onclick="SaveProfileAsync">
+                        @(isSavingProfile ? "Saving..." : "Save account")
+                    </button>
+
+                    <div class="profile-settings-divider" role="separator"></div>
+
+                    <h3>Change password</h3>
+
+                    <div class="profile-field-grid">
+                        <div class="profile-field">
+                            <label for="profile-current-password">Current password</label>
+                            <div class="password-input-wrap">
+                                <input id="profile-current-password" type="@(showCurrentPassword ? "text" : "password")" class="form-control" autocomplete="current-password" @bind="currentPassword" @bind:event="oninput" />
+                                <button type="button" class="password-toggle" aria-label="@(showCurrentPassword ? "Hide password" : "Show password")" aria-pressed="@showCurrentPassword.ToString().ToLowerInvariant()" @onclick="() => showCurrentPassword = !showCurrentPassword">
+                                    <i class="bi @(showCurrentPassword ? "bi-eye-slash" : "bi-eye")" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="profile-field">
+                            <label for="profile-new-password">New password</label>
+                            <div class="password-input-wrap">
+                                <input id="profile-new-password" type="@(showNewPassword ? "text" : "password")" class="form-control" autocomplete="new-password" @bind="newPassword" @bind:event="oninput" />
+                                <button type="button" class="password-toggle" aria-label="@(showNewPassword ? "Hide password" : "Show password")" aria-pressed="@showNewPassword.ToString().ToLowerInvariant()" @onclick="() => showNewPassword = !showNewPassword">
+                                    <i class="bi @(showNewPassword ? "bi-eye-slash" : "bi-eye")" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="profile-field profile-field-span">
+                            <label for="profile-confirm-password">Confirm new password</label>
+                            <div class="password-input-wrap">
+                                <input id="profile-confirm-password" type="@(showConfirmPassword ? "text" : "password")" class="form-control" autocomplete="new-password" @bind="confirmPassword" @bind:event="oninput" />
+                                <button type="button" class="password-toggle" aria-label="@(showConfirmPassword ? "Hide password" : "Show password")" aria-pressed="@showConfirmPassword.ToString().ToLowerInvariant()" @onclick="() => showConfirmPassword = !showConfirmPassword">
+                                    <i class="bi @(showConfirmPassword ? "bi-eye-slash" : "bi-eye")" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="wire-btn secondary profile-save-btn" disabled="@isSavingPassword" @onclick="ChangePasswordAsync">
+                        @(isSavingPassword ? "Updating..." : "Update password")
+                    </button>
+                </div>
             </section>
 
-            <section class="profile-content-grid">
-                <div>
-                    <h2 class="profile-section-title">Your Activity</h2>
-                    <section class="profile-list-card activity-card">
-                        @foreach (var item in ActivityItems)
-                        {
-                            <a class="profile-list-row" href="@item.Href">
-                                <i class="bi @item.Icon" aria-hidden="true"></i>
-                                <span>
-                                    <strong>@item.Title</strong>
-                                    <small>@item.Description</small>
-                                </span>
-                                <em>@item.Count</em>
-                                <i class="bi bi-chevron-right row-chevron" aria-hidden="true"></i>
-                            </a>
-                        }
-                    </section>
-
-                    <h2 class="profile-section-title danger-heading">Danger Zone</h2>
-                    <section class="danger-zone-card">
-                        <a href="/Account/Manage/PersonalData">
-                            <i class="bi bi-trash3" aria-hidden="true"></i>
+            <section class="profile-content-full">
+                <h2 class="profile-section-title">Your Activity</h2>
+                <section class="profile-list-card activity-card">
+                    @foreach (var item in ActivityItems)
+                    {
+                        <a class="profile-list-row" href="@item.Href">
+                            <i class="bi @item.Icon" aria-hidden="true"></i>
                             <span>
-                                <strong>Delete Account</strong>
-                                <small>Permanently delete your account and all of your data.</small>
+                                <strong>@item.Title</strong>
+                                <small>@item.Description</small>
                             </span>
+                            <em>@item.Count</em>
                             <i class="bi bi-chevron-right row-chevron" aria-hidden="true"></i>
                         </a>
-                    </section>
-                </div>
+                    }
+                </section>
+
+                <h2 class="profile-section-title danger-heading">Danger Zone</h2>
+                <section class="danger-zone-card profile-delete-card">
+                    <div class="profile-delete-copy">
+                        <i class="bi bi-trash3" aria-hidden="true"></i>
+                        <span>
+                            <strong>Delete Account</strong>
+                            <small>Permanently delete your account and pantry data. This cannot be undone.</small>
+                        </span>
+                    </div>
+
+                    @if (!showDeleteConfirm)
+                    {
+                        <button type="button" class="wire-btn danger profile-delete-btn" @onclick="() => showDeleteConfirm = true">
+                            Delete account
+                        </button>
+                    }
+                    else
+                    {
+                        <div class="profile-delete-confirm">
+                            <div class="profile-field">
+                                <label for="profile-delete-password">Confirm with your password</label>
+                                <div class="password-input-wrap">
+                                    <input id="profile-delete-password" type="@(showDeletePassword ? "text" : "password")" class="form-control" autocomplete="current-password" @bind="deletePassword" @bind:event="oninput" />
+                                    <button type="button" class="password-toggle" aria-label="@(showDeletePassword ? "Hide password" : "Show password")" aria-pressed="@showDeletePassword.ToString().ToLowerInvariant()" @onclick="() => showDeletePassword = !showDeletePassword">
+                                        <i class="bi @(showDeletePassword ? "bi-eye-slash" : "bi-eye")" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(deleteMessage))
+                            {
+                                <div class="profile-settings-status error" role="alert">@deleteMessage</div>
+                            }
+                            <div class="profile-delete-actions">
+                                <button type="button" class="wire-btn secondary" @onclick="CancelDelete">Cancel</button>
+                                <button type="button" class="wire-btn danger" disabled="@isDeleting" @onclick="DeleteAccountAsync">
+                                    @(isDeleting ? "Deleting..." : "Confirm delete")
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </section>
             </section>
 
             <footer class="profile-footer">ScrapeThePantry &copy; 2024 &bull; All rights reserved</footer>
@@ -105,8 +184,29 @@
 @code {
     private bool isLoggedIn;
     private string email = "";
-    private string displayName = "";
+    private string userName = "";
     private string? userId;
+    private ApplicationUser? currentUser;
+
+    private string editUserName = "";
+    private string editEmail = "";
+    private string currentPassword = "";
+    private string newPassword = "";
+    private string confirmPassword = "";
+    private string deletePassword = "";
+
+    private string? profileMessage;
+    private bool profileMessageIsError;
+    private string? deleteMessage;
+
+    private bool isSavingProfile;
+    private bool isSavingPassword;
+    private bool isDeleting;
+    private bool showDeleteConfirm;
+    private bool showCurrentPassword;
+    private bool showNewPassword;
+    private bool showConfirmPassword;
+    private bool showDeletePassword;
 
     private int savedCount;
     private int favoriteCount;
@@ -116,7 +216,7 @@
     [
         new("bi-bookmark", "Saved Recipes", "View all your saved recipes", savedCount, "/savedrecipes"),
         new("bi-heart", "Favorite Recipes", "Recipes you've marked as favorite", favoriteCount, "/savedrecipes?tab=favorites"),
-        new("bi-leaf", "Custom Ingredients", "Ingredients you've added", customIngredientCount, "/ingredients")
+        new("bi-stars", "Custom Ingredients", "Ingredients you've added", customIngredientCount, "/ingredients")
     ];
 
     protected override async Task OnInitializedAsync()
@@ -125,15 +225,23 @@
         var user = auth.User;
 
         isLoggedIn = user.Identity?.IsAuthenticated == true;
-
         if (!isLoggedIn)
             return;
 
-        var appUser = await UserManager.GetUserAsync(user);
+        currentUser = await UserManager.GetUserAsync(user);
+        if (currentUser == null)
+        {
+            isLoggedIn = false;
+            return;
+        }
 
-        userId = appUser?.Id;
-        email = appUser?.Email ?? "";
-        displayName = GetDisplayName(email);
+        userId = currentUser.Id;
+        email = currentUser.Email ?? "";
+        userName = !string.IsNullOrWhiteSpace(currentUser.DisplayName)
+            ? currentUser.DisplayName
+            : (currentUser.UserName ?? "");
+        editUserName = userName;
+        editEmail = email;
 
         await LoadStats();
     }
@@ -143,19 +251,193 @@
         if (userId == null)
             return;
 
-        savedCount = await Db.SavedRecipes.CountAsync(r => r.UserId == userId);
-        favoriteCount = await Db.SavedRecipes.CountAsync(r => r.UserId == userId && r.IsFavorite);
-        customIngredientCount = await Db.Ingredients.CountAsync(i => i.CreatedByUserId == userId && !i.IsDefault);
+        savedCount = await Db.SavedRecipes.AsNoTracking().CountAsync(r => r.UserId == userId);
+        favoriteCount = await Db.SavedRecipes.AsNoTracking().CountAsync(r => r.UserId == userId && r.IsFavorite);
+        customIngredientCount = await Db.Ingredients.AsNoTracking().CountAsync(i => i.CreatedByUserId == userId && !i.IsDefault);
     }
 
-    private static string GetDisplayName(string value)
+    private async Task SaveProfileAsync()
     {
-        if (string.IsNullOrWhiteSpace(value))
-            return "My Profile";
+        if (currentUser == null)
+            return;
 
-        var prefix = value.Split('@')[0].Replace('.', ' ').Replace('_', ' ').Trim();
-        return string.Join(' ', prefix.Split(' ', StringSplitOptions.RemoveEmptyEntries)
-            .Select(part => char.ToUpperInvariant(part[0]) + part[1..].ToLowerInvariant()));
+        isSavingProfile = true;
+        profileMessage = null;
+
+        try
+        {
+            var nextUserName = editUserName.Trim();
+            var nextEmail = editEmail.Trim();
+
+            if (string.IsNullOrWhiteSpace(nextUserName))
+            {
+                SetProfileMessage("Username is required.", true);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(nextEmail) || !new EmailAddressAttribute().IsValid(nextEmail))
+            {
+                SetProfileMessage("Enter a valid email address.", true);
+                return;
+            }
+
+            var usernameChanged = !string.Equals(currentUser.UserName, nextUserName, StringComparison.Ordinal);
+            var emailChanged = !string.Equals(currentUser.Email, nextEmail, StringComparison.OrdinalIgnoreCase);
+            var displayChanged = !string.Equals(currentUser.DisplayName, nextUserName, StringComparison.Ordinal);
+
+            if (!usernameChanged && !emailChanged && !displayChanged)
+            {
+                SetProfileMessage("Account saved.", false);
+                return;
+            }
+
+            if (usernameChanged)
+            {
+                var normalized = UserManager.NormalizeName(nextUserName);
+                var taken = await UserManager.Users.AsNoTracking()
+                    .AnyAsync(u => u.NormalizedUserName == normalized && u.Id != currentUser.Id);
+                if (taken)
+                {
+                    SetProfileMessage("That username is already taken.", true);
+                    return;
+                }
+
+                currentUser.UserName = nextUserName;
+                currentUser.NormalizedUserName = normalized;
+            }
+
+            if (emailChanged)
+            {
+                var normalizedEmail = UserManager.NormalizeEmail(nextEmail);
+                var taken = await UserManager.Users.AsNoTracking()
+                    .AnyAsync(u => u.NormalizedEmail == normalizedEmail && u.Id != currentUser.Id);
+                if (taken)
+                {
+                    SetProfileMessage("That email is already in use.", true);
+                    return;
+                }
+
+                currentUser.Email = nextEmail;
+                currentUser.NormalizedEmail = normalizedEmail;
+                currentUser.EmailConfirmed = true;
+            }
+
+            currentUser.DisplayName = nextUserName;
+
+            var update = await UserManager.UpdateAsync(currentUser);
+            if (!update.Succeeded)
+            {
+                SetProfileMessage(string.Join(" ", update.Errors.Select(e => e.Description)), true);
+                return;
+            }
+
+            userName = nextUserName;
+            email = nextEmail;
+            SetProfileMessage("Account saved.", false);
+
+            await SignInManager.RefreshSignInAsync(currentUser);
+
+            // Reload once so the centered Hello greeting picks up the new username.
+            if (usernameChanged || displayChanged)
+                Nav.NavigateTo("/profile", forceLoad: true);
+        }
+        finally
+        {
+            isSavingProfile = false;
+        }
+    }
+
+    private async Task ChangePasswordAsync()
+    {
+        if (currentUser == null)
+            return;
+
+        isSavingPassword = true;
+        profileMessage = null;
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(currentPassword) || string.IsNullOrWhiteSpace(newPassword))
+            {
+                SetProfileMessage("Enter your current and new password.", true);
+                return;
+            }
+
+            if (newPassword.Length < 6)
+            {
+                SetProfileMessage("New password must be at least 6 characters.", true);
+                return;
+            }
+
+            if (!string.Equals(newPassword, confirmPassword, StringComparison.Ordinal))
+            {
+                SetProfileMessage("New password and confirmation do not match.", true);
+                return;
+            }
+
+            var result = await UserManager.ChangePasswordAsync(currentUser, currentPassword, newPassword);
+            if (!result.Succeeded)
+            {
+                SetProfileMessage(string.Join(" ", result.Errors.Select(e => e.Description)), true);
+                return;
+            }
+
+            await SignInManager.RefreshSignInAsync(currentUser);
+            currentPassword = "";
+            newPassword = "";
+            confirmPassword = "";
+            SetProfileMessage("Password updated.", false);
+        }
+        finally
+        {
+            isSavingPassword = false;
+        }
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteConfirm = false;
+        showDeletePassword = false;
+        deletePassword = "";
+        deleteMessage = null;
+    }
+
+    private async Task DeleteAccountAsync()
+    {
+        if (currentUser == null)
+            return;
+
+        isDeleting = true;
+        deleteMessage = null;
+
+        try
+        {
+            if (!await UserManager.CheckPasswordAsync(currentUser, deletePassword))
+            {
+                deleteMessage = "Incorrect password.";
+                return;
+            }
+
+            var result = await UserManager.DeleteAsync(currentUser);
+            if (!result.Succeeded)
+            {
+                deleteMessage = string.Join(" ", result.Errors.Select(e => e.Description));
+                return;
+            }
+
+            await SignInManager.SignOutAsync();
+            Nav.NavigateTo("/", forceLoad: true);
+        }
+        finally
+        {
+            isDeleting = false;
+        }
+    }
+
+    private void SetProfileMessage(string message, bool isError)
+    {
+        profileMessage = message;
+        profileMessageIsError = isError;
     }
 
     private record ProfileActivityItem(string Icon, string Title, string Description, int Count, string Href);

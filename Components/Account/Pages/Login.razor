@@ -7,6 +7,7 @@
 
 @inject AuthenticationStateProvider AuthStateProvider
 @inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
 @inject ILogger<Login> Logger
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
@@ -29,7 +30,7 @@
             <div class="auth-field">
                 <label for="email">Email Address</label>
                 <div class="auth-input-wrap">
-                    <i class="bi bi-envelope" aria-hidden="true"></i>
+                    <i class="bi bi-envelope field-icon" aria-hidden="true"></i>
                     <InputText id="email" @bind-Value="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="Enter your email" />
                 </div>
                 <ValidationMessage For="() => Input.Email" class="text-danger" />
@@ -38,26 +39,17 @@
             <div class="auth-field">
                 <label for="password">Password</label>
                 <div class="auth-input-wrap">
-                    <i class="bi bi-lock" aria-hidden="true"></i>
+                    <i class="bi bi-lock field-icon" aria-hidden="true"></i>
                     <InputText id="password" type="password" @bind-Value="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="Enter your password" />
+                    <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false" onclick="togglePasswordVisibility(this)">
+                        <i class="bi bi-eye" aria-hidden="true"></i>
+                    </button>
                 </div>
                 <ValidationMessage For="() => Input.Password" class="text-danger" />
             </div>
 
-            <div class="auth-form-row">
-                <label class="auth-checkbox">
-                    <InputCheckbox @bind-Value="Input.RememberMe" />
-                    <span>Remember me</span>
-                </label>
-                <a href="Account/ForgotPassword">Forgot password?</a>
-            </div>
-
             <button type="submit" class="auth-submit">Log In</button>
         </EditForm>
-
-        <div class="auth-secondary-actions">
-            <a href="Account/ResendEmailConfirmation">Resend email confirmation</a>
-        </div>
 
         <p class="auth-switch">
             Don't have an account?
@@ -86,9 +78,21 @@
 
     public async Task LoginUser()
     {
-        // This doesn't count login failures towards account lockout
-        // To enable password failures to trigger account lockout, set lockoutOnFailure: true
-        var result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+        var email = Input.Email.Trim();
+        var user = await UserManager.FindByEmailAsync(email);
+        if (user == null)
+        {
+            // Support older accounts that used email as username.
+            user = await UserManager.FindByNameAsync(email);
+        }
+
+        if (user == null)
+        {
+            errorMessage = "Error: Invalid login attempt.";
+            return;
+        }
+
+        var result = await SignInManager.PasswordSignInAsync(user, Input.Password, isPersistent: false, lockoutOnFailure: false);
         if (result.Succeeded)
         {
             Logger.LogInformation("User logged in.");
@@ -98,7 +102,7 @@
         {
             RedirectManager.RedirectTo(
                 "Account/LoginWith2fa",
-                new() { ["returnUrl"] = ReturnUrl, ["rememberMe"] = Input.RememberMe });
+                new() { ["returnUrl"] = ReturnUrl, ["rememberMe"] = false });
         }
         else if (result.IsLockedOut)
         {
@@ -120,8 +124,5 @@
         [Required]
         [DataType(DataType.Password)]
         public string Password { get; set; } = "";
-
-        [Display(Name = "Remember me?")]
-        public bool RememberMe { get; set; }
     }
 }
