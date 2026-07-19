@@ -21,7 +21,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddCascadingAuthenticationState();
-builder.Services.AddMemoryCache();
+builder.Services.AddMemoryCache(); // used by MealDB + ingredient catalog caches
 builder.Services.AddScoped<IdentityUserAccessor>();
 builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
@@ -33,6 +33,7 @@ builder.Services.AddAuthentication(options =>
     })
     .AddIdentityCookies();
 
+// Typed HttpClients share BaseAddress; responses are cached inside the services.
 builder.Services.AddHttpClient<MealDbService>(client =>
 {
     client.BaseAddress = new Uri("https://www.themealdb.com/api/json/v1/1/");
@@ -44,9 +45,9 @@ builder.Services.AddHttpClient<IngredientCatalogService>(client =>
 });
 
 builder.Services.AddScoped<PantryService>();
-builder.Services.AddScoped<RecipeSearchState>();
+builder.Services.AddScoped<RecipeSearchState>(); // circuit-scoped search/pantry UI state
 builder.Services.AddScoped<GuestPantrySession>();
-builder.Services.AddHostedService<CatalogSyncHostedService>();
+builder.Services.AddHostedService<CatalogSyncHostedService>(); // warm catalog after deploy/start
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (string.IsNullOrWhiteSpace(connectionString))

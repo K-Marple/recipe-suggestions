@@ -4,6 +4,9 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace recipe_suggestions.Services;
 
+/// <summary>
+/// Calls TheMealDB and caches responses to avoid repeat network traffic within a short window.
+/// </summary>
 public class MealDbService
 {
     private readonly HttpClient _http;
@@ -35,7 +38,7 @@ public class MealDbService
         try
         {
             // TheMealDB filter endpoint returns a compact list of meals that include one ingredient.
-            // Spaces are converted to underscores because TheMealDB expects values like "chicken_breast".
+            // Spaces become underscores (e.g. "chicken breast" → "chicken_breast").
             var safeIngredient = Uri.EscapeDataString(normalizedIngredient.Replace(" ", "_"));
 
             var result = await _http.GetFromJsonAsync<MealDbSearchResponse>(
@@ -70,7 +73,7 @@ public class MealDbService
 
         try
         {
-            // An empty MealDB search returns a broad catalog list that works well for browsing.
+            // Empty search returns a broad meal list used when browsing or when pantry search has no hits.
             var result = await _http.GetFromJsonAsync<MealDbDetailResponse>("search.php?s=");
 
             var meals = result?.Meals?

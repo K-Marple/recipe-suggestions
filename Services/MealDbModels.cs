@@ -108,6 +108,10 @@ public class MealDbMealDetail
         }
     }
 
+    /// <summary>
+    /// Splits MealDB instruction text into UI steps, dropping blank lines and bare "Step N" labels
+    /// (the numbered circles in the UI already show the step number).
+    /// </summary>
     public IEnumerable<string> GetInstructionSteps()
     {
         if (string.IsNullOrWhiteSpace(StrInstructions))

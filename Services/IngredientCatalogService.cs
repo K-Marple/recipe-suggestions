@@ -7,6 +7,10 @@ using recipe_suggestions.Models;
 
 namespace recipe_suggestions.Services;
 
+/// <summary>
+/// Loads and caches the ingredient catalog (defaults + MealDB sync + per-user custom items).
+/// Cache keys are per-user so custom ingredients stay private while defaults stay shared.
+/// </summary>
 public class IngredientCatalogService
 {
     private static readonly TimeSpan CatalogCacheDuration = TimeSpan.FromMinutes(10);

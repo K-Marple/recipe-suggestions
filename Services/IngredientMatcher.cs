@@ -1,5 +1,9 @@
 namespace recipe_suggestions.Services;
 
+/// <summary>
+/// Fuzzy matching between pantry/search names and MealDB ingredient strings.
+/// Tuned to avoid common false positives (egg↔eggplant, pea↔peanut).
+/// </summary>
 public static class IngredientMatcher
 {
     public static string Normalize(string? value)

@@ -33,15 +33,19 @@
     </header>
 
     <div class="app-body">
-        <input type="checkbox" id="sidebar-toggle" class="sidebar-toggle" aria-hidden="true" />
-        <label for="sidebar-toggle" class="sidebar-toggle-btn" aria-label="Toggle navigation menu">
+        <input type="checkbox" id="sidebar-toggle" class="sidebar-toggle" tabindex="-1" />
+        <label for="sidebar-toggle" class="sidebar-toggle-btn">
+            <span class="visually-hidden">Toggle navigation menu</span>
             <i class="bi bi-list" aria-hidden="true"></i>
+        </label>
+        <label for="sidebar-toggle" class="sidebar-backdrop">
+            <span class="visually-hidden">Close navigation menu</span>
         </label>
 
         <NavMenu />
 
         <main class="app-main">
-            <article id="main-content" class="page-content" tabindex="-1">
+            <article id="main-content" class="page-content" tabindex="-1" aria-label="Main content">
                 @Body
             </article>
         </main>

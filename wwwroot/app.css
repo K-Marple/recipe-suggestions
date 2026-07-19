@@ -16,6 +16,22 @@
     --radius-sm: 8px;
     --shadow: 0 16px 45px rgba(31, 23, 18, 0.1);
     --shadow-sm: 0 4px 14px rgba(31, 23, 18, 0.08);
+
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-7: 32px;
+    --page-pad-x: 42px;
+    --page-pad-y: 34px;
+    --page-pad-bottom: 44px;
+    --section-gap: 28px;
+    --card-gap: 16px;
+    --card-pad: 20px;
+    --topbar-h: 74px;
+    --touch: 44px;
 }
 
 :root {
@@ -74,7 +90,7 @@ a.disabled {
 .app-shell {
     min-height: 100vh;
     display: grid;
-    grid-template-columns: 250px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     background: var(--bg);
 }
 
@@ -398,6 +414,7 @@ select:focus {
 }
 
 .wire-card h3,
+.wire-card h2,
 .mvp-card h3,
 .feature-card h3 {
     margin-top: 0;
@@ -835,14 +852,14 @@ body {
 }
 
 .app-shell {
-    grid-template-columns: 190px minmax(0, 1fr);
-    max-width: 1280px;
-    min-height: calc(100vh - 24px);
-    margin: 12px auto;
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 100%;
+    min-height: 100vh;
+    margin: 0;
     background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    box-shadow: var(--shadow);
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
     overflow: hidden;
 }
 
@@ -1201,7 +1218,8 @@ a.wire-card:hover {
     box-shadow: var(--shadow);
 }
 
-.wire-card h3 {
+.wire-card h3,
+.wire-card h2 {
     margin: 8px 0;
     font-size: 1rem;
 }
@@ -1734,8 +1752,28 @@ a:focus:not(:focus-visible) {
 }
 
 /* Mobile sidebar toggle */
+.visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
 .sidebar-toggle {
     position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
     opacity: 0;
     pointer-events: none;
 }
@@ -1753,15 +1791,32 @@ a:focus:not(:focus-visible) {
     background: var(--surface);
     color: var(--text);
     place-items: center;
+    cursor: pointer;
 }
 
 .sidebar-toggle-btn i {
     font-size: 1.25rem;
 }
 
+.sidebar-backdrop {
+    display: none;
+}
+
 @media (max-width: 900px) {
     .sidebar-toggle-btn {
         display: grid;
+    }
+
+    .sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 70;
+        background: rgba(15, 23, 42, 0.42);
+        cursor: pointer;
+    }
+
+    .sidebar-toggle:checked ~ .sidebar-backdrop {
+        display: block;
     }
 
     .app-shell .app-sidebar {
@@ -1770,9 +1825,12 @@ a:focus:not(:focus-visible) {
         top: 0;
         left: 0;
         bottom: 0;
-        width: min(260px, 85vw);
+        width: min(280px, 86vw);
         z-index: 80;
         box-shadow: var(--shadow);
+        background: #fff;
+        padding-top: 64px;
+        overflow-y: auto;
     }
 
     .sidebar-toggle:checked ~ .app-sidebar {
@@ -1780,9 +1838,32 @@ a:focus:not(:focus-visible) {
     }
 
     .app-topbar {
-        display: flex;
-        justify-content: flex-end;
-        padding-left: 60px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        align-items: center;
+        justify-content: initial;
+        gap: 8px;
+        padding: 0 12px 0 58px;
+        min-height: 64px;
+    }
+
+    .topbar-brand {
+        justify-self: start;
+        max-width: 100%;
+        font-size: 0.92rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .topbar-hello-link {
+        justify-self: center;
+        max-width: min(46vw, 220px);
+        font-size: 0.92rem;
+    }
+
+    .topbar-actions {
+        justify-self: end;
     }
 }
 
@@ -2367,9 +2448,9 @@ body {
 
 .app-shell {
     display: grid;
-    grid-template-columns: 172px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: 74px minmax(0, 1fr);
-    width: 100vw;
+    width: 100%;
     max-width: 100%;
     min-height: 100vh;
     margin: 0;
@@ -2580,12 +2661,12 @@ body {
 
 .page-content {
     max-width: 1120px;
-    padding: 34px 42px 44px;
+    padding: var(--page-pad-y) var(--page-pad-x) var(--page-pad-bottom);
 }
 
 .home-screen {
     min-height: auto;
-    gap: 28px;
+    gap: var(--section-gap);
 }
 
 .wireframe-hero {
@@ -2688,7 +2769,8 @@ a.wire-card:hover {
     font-size: 1.35rem;
 }
 
-.wire-card h3 {
+.wire-card h3,
+.wire-card h2 {
     margin: 6px 0 4px;
     font-size: 1.08rem;
 }
@@ -2838,31 +2920,42 @@ a.wire-card:hover {
 @media (max-width: 900px) {
     .app-shell {
         width: 100%;
+        max-width: 100%;
         min-height: 100vh;
         margin: 0;
         border-radius: 0;
-        grid-template-rows: 68px minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: 64px minmax(0, 1fr);
     }
 
     .app-body {
         display: block;
+        min-height: 0;
+        grid-template-columns: none;
+    }
+
+    .app-main {
+        min-height: calc(100vh - 64px);
+        width: 100%;
+        max-width: 100%;
     }
 
     .app-topbar {
-        padding: 0 18px 0 66px;
-        min-height: 68px;
+        padding: 0 12px 0 58px;
+        min-height: 64px;
     }
 
     .topbar-hello-link {
-        font-size: 0.98rem;
-        max-width: 42vw;
+        font-size: 0.92rem;
+        max-width: min(46vw, 220px);
         overflow: hidden;
         text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .topbar-brand {
-        font-size: 0.96rem;
-        max-width: 190px;
+        font-size: 0.92rem;
+        max-width: 100%;
     }
 
     .topbar-brand .brand-icon {
@@ -2873,6 +2966,14 @@ a.wire-card:hover {
 
     .topbar-actions {
         gap: 8px;
+    }
+
+    .topbar-login-button,
+    .topbar-logout-button {
+        min-height: 36px;
+        padding: 8px 12px;
+        font-size: 0.82rem;
+        white-space: nowrap;
     }
 
     .topbar-actions .topbar-welcome {
@@ -2886,7 +2987,20 @@ a.wire-card:hover {
     }
 
     .page-content {
-        padding: 24px 20px 34px;
+        padding: 20px 16px 32px;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    .wireframe-page,
+    .home-screen,
+    .recipes-screen,
+    .pantry-screen,
+    .saved-screen,
+    .profile-screen,
+    .detail-screen {
+        max-width: 100%;
+        gap: 16px;
     }
 
     .wireframe-hero,
@@ -2897,12 +3011,114 @@ a.wire-card:hover {
     }
 
     .wireframe-hero {
-        padding: 34px 24px;
+        padding: 28px 20px;
         min-height: auto;
     }
 
     .hero-copy h1 {
-        font-size: clamp(2.1rem, 12vw, 3rem);
+        font-size: clamp(1.85rem, 8vw, 2.6rem);
+    }
+
+    .hero-description {
+        font-size: 0.95rem;
+    }
+
+    .button-row {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+    }
+
+    .button-row .wire-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .home-screen .wire-card-grid,
+    .wire-card-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .wire-card {
+        min-height: 0;
+        padding: 20px 16px;
+    }
+
+    .guest-banner {
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+
+    .recipes-hero,
+    .page-heading,
+    .saved-hero {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .recipe-top-actions {
+        width: 100%;
+    }
+
+    .recipe-top-actions .wire-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .detail-hero-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .detail-info-row,
+    .detail-content-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .auth-gate-card,
+    .auth-card,
+    .auth-card.register-card {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .profile-settings-body,
+    .profile-settings-header-row {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    img,
+    video,
+    canvas {
+        max-width: 100%;
+    }
+
+    .suggestion-image,
+    .recipe-detail-image-box img,
+    .saved-recipe-media img {
+        height: 100%;
+        max-width: none;
+        width: 100%;
+        object-fit: cover;
+    }
+
+    .recipe-suggestion-card {
+        grid-template-columns: 1fr;
+    }
+
+    .suggestion-actions {
+        grid-column: 1 / -1;
+        justify-content: stretch;
+        flex-wrap: wrap;
+        padding: 0 16px 16px;
+        gap: 10px;
+    }
+
+    .suggestion-actions .wire-btn,
+    .suggestion-actions .view-recipe-btn {
+        flex: 1 1 auto;
+        justify-content: center;
     }
 }
 
@@ -4008,26 +4224,6 @@ a.wire-card:hover {
     font-size: 0.78rem;
 }
 
-@media (max-width: 640px) {
-    .auth-card-shell {
-        min-height: auto;
-        padding: 18px 0 28px;
-        background: transparent;
-    }
-
-    .auth-card,
-    .auth-card.register-card {
-        padding: 34px 22px;
-        border-radius: 14px;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.06);
-    }
-
-    .auth-form-row {
-        align-items: flex-start;
-        flex-direction: column;
-    }
-}
-
 /* Auth card closer mockup pass */
 .auth-card-shell {
     min-height: calc(100vh - 150px);
@@ -4043,6 +4239,28 @@ a.wire-card:hover {
 .auth-card.register-card {
     width: min(100%, 500px);
     padding: 48px 42px 42px;
+}
+
+@media (max-width: 640px) {
+    .auth-card-shell {
+        min-height: auto;
+        padding: var(--space-4) 0 var(--space-6);
+        background: transparent;
+    }
+
+    .auth-card,
+    .auth-card.register-card {
+        width: 100%;
+        max-width: 100%;
+        padding: var(--space-6) var(--space-5);
+        border-radius: 14px;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.06);
+    }
+
+    .auth-form-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
 }
 
 .auth-card-header {
@@ -6460,22 +6678,6 @@ button.detail-back-link:hover,
 
 @media (max-width: 900px) {
     .saved-recipe-card {
-        grid-template-columns: 160px minmax(0, 1fr);
-    }
-
-    .saved-recipe-actions {
-        grid-column: 1 / -1;
-        justify-content: flex-start;
-        padding: 0 16px 16px;
-    }
-}
-
-@media (max-width: 640px) {
-    .saved-tab-switch {
-        width: 100%;
-    }
-
-    .saved-recipe-card {
         grid-template-columns: 1fr;
     }
 
@@ -6486,6 +6688,15 @@ button.detail-back-link:hover,
     }
 
     .saved-recipe-actions {
+        grid-column: 1 / -1;
+        width: 100%;
+        justify-content: flex-start;
+        padding: 0 var(--space-4) var(--space-4);
+    }
+}
+
+@media (max-width: 640px) {
+    .saved-tab-switch {
         width: 100%;
     }
 
@@ -6494,3 +6705,368 @@ button.detail-back-link:hover,
     }
 }
 
+
+/* ===== Master responsive spacing (wins cascade) ===== */
+@media (max-width: 900px) {
+    :root {
+        --page-pad-x: 16px;
+        --page-pad-y: 20px;
+        --page-pad-bottom: 32px;
+        --section-gap: 16px;
+        --card-gap: 12px;
+        --card-pad: 16px;
+        --topbar-h: 64px;
+    }
+
+    .app-shell {
+        width: 100%;
+        max-width: 100%;
+        min-height: 100vh;
+        margin: 0;
+        border-radius: 0;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: var(--topbar-h) minmax(0, 1fr);
+    }
+
+    .app-body {
+        display: block;
+        min-height: 0;
+        grid-template-columns: none;
+    }
+
+    .app-main {
+        min-height: calc(100vh - var(--topbar-h));
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .app-topbar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        align-items: center;
+        gap: var(--space-2);
+        padding: 0 var(--space-3) 0 58px;
+        min-height: var(--topbar-h);
+    }
+
+    .sidebar-toggle-btn {
+        display: grid;
+        top: 10px;
+        left: 10px;
+        min-width: var(--touch);
+        min-height: var(--touch);
+    }
+
+    .topbar-brand {
+        justify-self: start;
+        font-size: 0.92rem;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .topbar-hello-link {
+        justify-self: center;
+        font-size: 0.9rem;
+        max-width: min(46vw, 200px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .topbar-actions {
+        justify-self: end;
+        gap: var(--space-2);
+    }
+
+    .topbar-login-button,
+    .topbar-logout-button {
+        min-height: 36px;
+        padding: 8px 12px;
+        font-size: 0.82rem;
+        white-space: nowrap;
+    }
+
+    .page-content {
+        padding: var(--page-pad-y) var(--page-pad-x) var(--page-pad-bottom);
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    .wireframe-page,
+    .home-screen,
+    .recipes-screen,
+    .pantry-screen,
+    .saved-screen,
+    .profile-screen,
+    .detail-screen {
+        max-width: 100%;
+        gap: var(--section-gap);
+    }
+
+    .wireframe-hero,
+    .recipe-wire-card,
+    .detail-screen .recipe-detail-layout,
+    .profile-grid,
+    .detail-hero-grid,
+    .detail-info-row,
+    .detail-content-grid,
+    .home-screen .wire-card-grid,
+    .wire-card-grid,
+    .recipe-suggestion-card,
+    .saved-recipe-card {
+        grid-template-columns: 1fr !important;
+    }
+
+    .wireframe-hero {
+        padding: var(--space-6) var(--space-5);
+        min-height: auto;
+        border-radius: 12px;
+    }
+
+    .hero-copy h1 {
+        font-size: clamp(1.85rem, 8vw, 2.6rem);
+        line-height: 1.12;
+    }
+
+    .hero-description {
+        margin: var(--space-3) 0 var(--space-5);
+        font-size: 0.95rem;
+    }
+
+    .button-row {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+        gap: var(--space-3);
+    }
+
+    .button-row .wire-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .wire-card {
+        min-height: 0;
+        padding: var(--card-pad);
+    }
+
+    .guest-banner,
+    .recipes-hero,
+    .page-heading,
+    .saved-hero {
+        flex-wrap: wrap;
+        gap: var(--space-3);
+    }
+
+    .recipe-top-actions {
+        width: 100%;
+    }
+
+    .recipe-top-actions .wire-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .suggestion-image-wrap,
+    .saved-recipe-media,
+    .saved-recipe-media img,
+    .saved-recipe-fallback {
+        min-height: 180px;
+        height: 180px;
+    }
+
+    .suggestion-content,
+    .saved-recipe-body {
+        padding: var(--space-4) var(--space-5);
+    }
+
+    .suggestion-actions,
+    .saved-recipe-actions {
+        grid-column: 1 / -1;
+        width: 100%;
+        justify-content: stretch;
+        flex-wrap: wrap;
+        gap: var(--space-3);
+        padding: 0 var(--space-4) var(--space-4);
+    }
+
+    .suggestion-actions .wire-btn,
+    .suggestion-actions .view-recipe-btn,
+    .saved-recipe-actions .view-recipe-btn {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+
+    .auth-gate-card,
+    .auth-card,
+    .auth-card.register-card {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .profile-settings-body,
+    .profile-settings-header-row {
+        padding-left: var(--space-4);
+        padding-right: var(--space-4);
+    }
+
+    .detail-hero-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--space-3);
+    }
+
+    .detail-hero-actions .wire-btn {
+        width: 100%;
+    }
+
+    img,
+    video,
+    canvas {
+        max-width: 100%;
+    }
+
+    .suggestion-image,
+    .recipe-detail-image-box img,
+    .saved-recipe-media img {
+        width: 100%;
+        height: 100%;
+        max-width: none;
+        object-fit: cover;
+    }
+}
+
+@media (max-width: 640px) {
+    :root {
+        --page-pad-x: 12px;
+        --page-pad-y: 16px;
+        --page-pad-bottom: 28px;
+        --section-gap: 14px;
+        --card-pad: 14px;
+        --topbar-h: 58px;
+    }
+
+    .app-topbar {
+        padding: 0 var(--space-2) 0 56px;
+        min-height: var(--topbar-h);
+        gap: var(--space-2);
+    }
+
+    .sidebar-toggle-btn {
+        top: 7px;
+        left: 8px;
+        min-width: var(--touch);
+        min-height: var(--touch);
+    }
+
+    .topbar-brand {
+        font-size: 0.84rem;
+    }
+
+    .topbar-hello-link {
+        font-size: 0.84rem;
+        max-width: min(36vw, 140px);
+    }
+
+    .topbar-login-button,
+    .topbar-logout-button {
+        min-height: 34px;
+        padding: 7px 10px;
+        font-size: 0.76rem;
+    }
+
+    .page-content {
+        padding: var(--page-pad-y) var(--page-pad-x) var(--page-pad-bottom);
+    }
+
+    .wireframe-hero {
+        padding: var(--space-5) var(--space-4);
+    }
+
+    .hero-copy h1 {
+        font-size: clamp(1.65rem, 9vw, 2.2rem);
+    }
+
+    .suggestion-meta,
+    .saved-recipe-meta,
+    .detail-meta-row {
+        flex-wrap: wrap;
+        gap: var(--space-2) var(--space-3);
+    }
+
+    .suggestion-content h2,
+    .saved-recipe-body h2 {
+        white-space: normal;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .profile-field-grid,
+    .profile-content-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-settings-identity {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .auth-form-row,
+    .auth-gate-actions {
+        flex-direction: column;
+        width: 100%;
+        gap: var(--space-3);
+    }
+
+    .auth-gate-actions .wire-btn,
+    .auth-submit,
+    .find-recipes-button,
+    .profile-save-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .auth-card,
+    .auth-card.register-card {
+        padding: var(--space-6) var(--space-5);
+    }
+
+    .auth-card-shell {
+        min-height: auto;
+        padding: var(--space-4) 0 var(--space-6);
+    }
+
+    .simple-pantry-search,
+    .browse-recipe-search,
+    .search-field {
+        width: 100%;
+        max-width: none;
+    }
+
+    .pantry-summary-strip {
+        grid-template-columns: 1fr;
+    }
+
+    .saved-tab-switch {
+        width: 100%;
+    }
+}
+
+@media (max-width: 420px) {
+    .topbar-brand span {
+        max-width: 88px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: inline-block;
+        vertical-align: bottom;
+    }
+
+    .topbar-login-button {
+        padding: 7px 8px;
+        font-size: 0.72rem;
+    }
+}
