@@ -155,14 +155,17 @@
                                     @foreach (var item in ingredients)
                                     {
                                         var selected = pantryIds.Contains(item.Id);
-                                        var canRemove = !item.IsDefault && item.CreatedByUserId == userId;
-                                        <div id="ingredient-@item.Id" class="simple-ingredient-row-wrap @(canRemove ? "has-remove" : "") @(selected ? "selected" : "") @(highlightedIngredientId == item.Id ? "highlighted" : "")">
+                                        var canManage = !item.IsDefault && item.CreatedByUserId == userId;
+                                        <div id="ingredient-@item.Id" class="simple-ingredient-row-wrap @(canManage ? "has-actions" : "") @(selected ? "selected" : "") @(highlightedIngredientId == item.Id ? "highlighted" : "")">
                                             <button type="button" class="simple-ingredient-row @(selected ? "selected" : "")" @onclick="() => TogglePantryIngredient(item)">
                                                 <span>@GetDisplayName(item.Name)</span>
                                                 <i class="bi @(selected ? "bi-check-circle-fill" : "bi-plus-circle")" aria-hidden="true"></i>
                                             </button>
-                                            @if (canRemove)
+                                            @if (canManage)
                                             {
+                                                <button type="button" class="custom-ingredient-edit" aria-label="Edit @item.Name" title="Edit custom ingredient" @onclick="() => OpenEditCustomIngredient(item)" @onclick:stopPropagation="true">
+                                                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                                                </button>
                                                 <button type="button" class="custom-ingredient-remove" aria-label="Remove @item.Name" title="Remove custom ingredient" @onclick="() => RemoveCustomIngredient(item)" @onclick:stopPropagation="true">
                                                     <i class="bi bi-trash3" aria-hidden="true"></i>
                                                 </button>
@@ -184,8 +187,8 @@
             <section class="app-modal custom-ingredient-modal" role="dialog" aria-modal="true" aria-labelledby="custom-ingredient-title" @onclick:stopPropagation="true">
                 <button type="button" class="modal-close" aria-label="Close" @onclick="CloseModals">&times;</button>
                 <div class="custom-ingredient-icon"><i class="bi bi-stars" aria-hidden="true"></i></div>
-                <h2 id="custom-ingredient-title">Add Custom Ingredient</h2>
-                <p>Not in the catalog? Add it here and we’ll save it straight to your pantry.</p>
+                <h2 id="custom-ingredient-title">@(editingIngredient == null ? "Add Custom Ingredient" : "Edit Custom Ingredient")</h2>
+                <p>@(editingIngredient == null ? "Not in the catalog? Add it here and we’ll save it straight to your pantry." : "Update the name of this custom ingredient.")</p>
                 <div class="custom-ingredient-field">
                     <label for="new-ingredient">Ingredient name</label>
                     <input id="new-ingredient" class="form-control" maxlength="40" placeholder="e.g. Gochujang" autocomplete="off" @bind="newIngredientName" @bind:event="oninput" @bind:after="ClearDuplicateMatch" />
@@ -196,15 +199,19 @@
                         <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
                         <div>
                             <strong>@duplicateIngredient.Name already exists</strong>
-                            <span>We’ll open its category, move it to the top, and select it.</span>
+                            <span>@(editingIngredient == null ? "We’ll open its category, move it to the top, and select it." : "Choose a different name to save your changes.")</span>
                         </div>
                     </div>
                 }
                 <div class="modal-actions">
                     <button type="button" class="wire-btn secondary" @onclick="CloseModals">Cancel</button>
-                    @if (duplicateIngredient != null)
+                    @if (duplicateIngredient != null && editingIngredient == null)
                     {
                         <button type="button" class="wire-btn primary" @onclick="ShowExistingIngredient">Show in List</button>
+                    }
+                    else if (editingIngredient != null)
+                    {
+                        <button type="button" class="wire-btn primary" disabled="@(string.IsNullOrWhiteSpace(newIngredientName) || duplicateIngredient != null)" @onclick="SaveCustomIngredient">Save Changes</button>
                     }
                     else
                     {
@@ -231,6 +238,7 @@
     private bool isAddModalOpen;
     private string newIngredientName = "";
     private Ingredient? duplicateIngredient;
+    private Ingredient? editingIngredient;
     private int? highlightedIngredientId;
     private int? scrollToIngredientId;
     private int? pinnedIngredientId;
@@ -491,8 +499,32 @@
         OpenAddModal();
     }
 
-    private void OpenAddModal() { newIngredientName = ""; duplicateIngredient = null; isAddModalOpen = true; }
-    private void CloseModals() { isAddModalOpen = false; duplicateIngredient = null; }
+    private void OpenAddModal()
+    {
+        editingIngredient = null;
+        newIngredientName = "";
+        duplicateIngredient = null;
+        isAddModalOpen = true;
+    }
+
+    private void OpenEditCustomIngredient(Ingredient ingredient)
+    {
+        if (userId == null || ingredient.IsDefault || ingredient.CreatedByUserId != userId)
+            return;
+
+        editingIngredient = ingredient;
+        newIngredientName = ingredient.Name;
+        duplicateIngredient = null;
+        isAddModalOpen = true;
+    }
+
+    private void CloseModals()
+    {
+        isAddModalOpen = false;
+        duplicateIngredient = null;
+        editingIngredient = null;
+    }
+
     private void ClearDuplicateMatch() => duplicateIngredient = null;
 
     private async Task AddCustomIngredient()
@@ -520,6 +552,56 @@
         catalogSearch = "";
         expandedCategories.Add("Custom");
         FocusIngredient(ingredient.Id);
+        CloseModals();
+        ClearStatus();
+    }
+
+    private async Task SaveCustomIngredient()
+    {
+        if (userId == null || editingIngredient == null || string.IsNullOrWhiteSpace(newIngredientName))
+            return;
+
+        if (editingIngredient.IsDefault || editingIngredient.CreatedByUserId != userId)
+            return;
+
+        var name = newIngredientName.Trim();
+        duplicateIngredient = allIngredients.FirstOrDefault(i =>
+            i.Id != editingIngredient.Id &&
+            i.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+
+        if (duplicateIngredient != null)
+            return;
+
+        if (editingIngredient.Name.Equals(name, StringComparison.Ordinal))
+        {
+            CloseModals();
+            return;
+        }
+
+        var tracked = await Db.Ingredients.FirstOrDefaultAsync(i =>
+            i.Id == editingIngredient.Id &&
+            i.CreatedByUserId == userId &&
+            !i.IsDefault);
+
+        if (tracked == null)
+        {
+            SetStatus("Could not update that ingredient.", true);
+            CloseModals();
+            return;
+        }
+
+        tracked.Name = name;
+        await Db.SaveChangesAsync();
+        Catalog.InvalidateCatalogCache(userId);
+
+        editingIngredient.Name = name;
+        var pantryItem = pantryIngredients.FirstOrDefault(i => i.Id == editingIngredient.Id);
+        if (pantryItem != null)
+            pantryItem.Name = name;
+
+        catalogSearch = "";
+        expandedCategories.Add("Custom");
+        FocusIngredient(editingIngredient.Id);
         CloseModals();
         ClearStatus();
     }

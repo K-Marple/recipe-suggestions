@@ -5999,7 +5999,8 @@ button.detail-back-link:hover,
     width: 100%;
 }
 
-.simple-ingredient-row-wrap.has-remove {
+.simple-ingredient-row-wrap.has-remove,
+.simple-ingredient-row-wrap.has-actions {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 48px;
     width: 100%;
@@ -6010,7 +6011,12 @@ button.detail-back-link:hover,
     background: #fff;
 }
 
-.simple-ingredient-row-wrap.has-remove .simple-ingredient-row {
+.simple-ingredient-row-wrap.has-actions {
+    grid-template-columns: minmax(0, 1fr) 48px 48px;
+}
+
+.simple-ingredient-row-wrap.has-remove .simple-ingredient-row,
+.simple-ingredient-row-wrap.has-actions .simple-ingredient-row {
     width: 100%;
     min-height: 52px;
     padding-right: 14px;
@@ -6020,6 +6026,7 @@ button.detail-back-link:hover,
 }
 
 .simple-ingredient-row-wrap.has-remove.highlighted,
+.simple-ingredient-row-wrap.has-actions.highlighted,
 .simple-ingredient-row-wrap.highlighted {
     outline: 3px solid color-mix(in srgb, var(--app-brown) 45%, transparent);
     outline-offset: 2px;
@@ -6048,24 +6055,38 @@ button.detail-back-link:hover,
     }
 }
 
-.simple-ingredient-row-wrap.has-remove:hover {
+.simple-ingredient-row-wrap.has-remove:hover,
+.simple-ingredient-row-wrap.has-actions:hover {
     border-color: #b8dec5;
     background: #fbfffc;
 }
 
-.simple-ingredient-row-wrap.has-remove.selected {
+.simple-ingredient-row-wrap.has-remove.selected,
+.simple-ingredient-row-wrap.has-actions.selected {
     border-color: var(--app-brown);
     background: #fbfffc;
 }
 
+.custom-ingredient-edit,
 .custom-ingredient-remove {
     width: 100%;
     min-height: 52px;
     display: grid;
     place-items: center;
     border: 0;
-    border-left: 1px solid #efc7c7;
+    border-left: 1px solid var(--app-line);
     border-radius: 0;
+    background: #f8fafc;
+    color: var(--app-brown-dark);
+    cursor: pointer;
+}
+
+.custom-ingredient-edit:hover {
+    background: #f1f5f9;
+}
+
+.custom-ingredient-remove {
+    border-left: 1px solid #efc7c7;
     background: #fff8f8;
     color: #a12d2d;
 }
