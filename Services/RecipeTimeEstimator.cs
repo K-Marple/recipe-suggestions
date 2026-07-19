@@ -1,5 +1,9 @@
 namespace recipe_suggestions.Services;
 
+/// <summary>
+/// MealDB does not publish prep/cook times, so we approximate from ingredient count,
+/// category hints, and a stable name hash. Display as "~N mins" (rounded to 5).
+/// </summary>
 public static class RecipeTimeEstimator
 {
     public static RecipeTimeEstimate Estimate(

@@ -1,5 +1,9 @@
 namespace recipe_suggestions.Services;
 
+/// <summary>
+/// Computes pantry "have / buy" stats and ranking helpers for a hydrated MealDB recipe.
+/// Have counts use the user's pantry; priority scoring prefers earlier selected search ingredients.
+/// </summary>
 public class RecipeMatchAnalyzer
 {
     public static RecipeMatchStats Analyze(

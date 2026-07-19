@@ -439,6 +439,8 @@
         await RunSearchAsync();
     }
 
+    // Ingredient search: MealDB filter per ingredient → merge → hydrate details in pages.
+    // No ingredients / no matches: fall back to browse list.
     private async Task RunSearchAsync()
     {
         await RefreshUserStateAsync();
@@ -626,6 +628,7 @@
         await Pantry.AddManyToPantryAsync(userId, pending);
     }
 
+    // Fetch full meal details for the next page of candidates and sort by pantry overlap.
     private async Task HydrateNextBatchAsync(int count)
     {
         var currentMatches = RecipeState.EnrichedMatches.ToList();

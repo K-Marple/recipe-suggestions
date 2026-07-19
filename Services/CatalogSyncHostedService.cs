@@ -1,5 +1,9 @@
 namespace recipe_suggestions.Services;
 
+/// <summary>
+/// One-shot background job: sync MealDB ingredient names into the local catalog after startup
+/// so the pantry page can serve from Postgres/cache instead of hitting MealDB every request.
+/// </summary>
 public sealed class CatalogSyncHostedService(
     IServiceScopeFactory scopeFactory,
     ILogger<CatalogSyncHostedService> logger) : BackgroundService

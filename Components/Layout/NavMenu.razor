@@ -1,24 +1,40 @@
 @implements IDisposable
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JS
 @inject recipe_suggestions.Services.RecipeSearchState RecipeState
 
 <aside class="app-sidebar">
     <nav class="sidebar-nav" aria-label="Main navigation">
-        <NavLink href="" Match="NavLinkMatch.All"><span class="nav-icon"><i class="bi bi-house" aria-hidden="true"></i></span> Home</NavLink>
-        <NavLink href="ingredients"><span class="nav-icon"><i class="bi bi-basket" aria-hidden="true"></i></span> My Pantry</NavLink>
+        <NavLink href="" Match="NavLinkMatch.All" @onclick="CloseSidebarAsync"><span class="nav-icon"><i class="bi bi-house" aria-hidden="true"></i></span> Home</NavLink>
+        <NavLink href="ingredients" @onclick="CloseSidebarAsync"><span class="nav-icon"><i class="bi bi-basket" aria-hidden="true"></i></span> My Pantry</NavLink>
         <a href="/recipes" class="@(currentUrl?.StartsWith("recipes", StringComparison.OrdinalIgnoreCase) == true ? "active" : null)" @onclick="BrowseRecipes" @onclick:preventDefault="true"><span class="nav-icon"><i class="bi bi-journal-text" aria-hidden="true"></i></span> Recipes</a>
-        <NavLink href="savedrecipes"><span class="nav-icon"><i class="bi bi-heart" aria-hidden="true"></i></span> Saved Recipes</NavLink>
-        <NavLink href="profile"><span class="nav-icon"><i class="bi bi-person" aria-hidden="true"></i></span> Account</NavLink>
+        <NavLink href="savedrecipes" @onclick="CloseSidebarAsync"><span class="nav-icon"><i class="bi bi-heart" aria-hidden="true"></i></span> Saved Recipes</NavLink>
+        <NavLink href="profile" @onclick="CloseSidebarAsync"><span class="nav-icon"><i class="bi bi-person" aria-hidden="true"></i></span> Account</NavLink>
     </nav>
 </aside>
 
 @code {
     private string? currentUrl;
 
-    private void BrowseRecipes()
+    private async Task BrowseRecipes()
     {
+        await CloseSidebarAsync();
         RecipeState.Clear();
         NavigationManager.NavigateTo($"/recipes?browse={Guid.NewGuid():N}");
+    }
+
+    private async Task CloseSidebarAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("closeSidebarNav");
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
     }
 
     protected override void OnInitialized()
@@ -30,7 +46,25 @@
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
-        StateHasChanged();
+        _ = HandleLocationChangedAsync();
+    }
+
+    private async Task HandleLocationChangedAsync()
+    {
+        try
+        {
+            await CloseSidebarAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
     }
 
     public void Dispose()

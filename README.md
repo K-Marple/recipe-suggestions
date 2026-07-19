@@ -32,29 +32,31 @@ The app reduces meal-planning friction by turning pantry ingredients into recipe
 - Blazor Web App with Interactive Server rendering
 - ASP.NET Core Identity
 - Entity Framework Core
-- SQLite
+- PostgreSQL (Supabase)
 - TheMealDB public API
 - Bootstrap and custom CSS
+- Deployed on Render
 
 ## Run Locally
 
 1. Install the .NET 8 SDK.
 2. Clone the repository.
-3. Open a terminal in the project folder.
-4. Restore and build:
+3. Copy `.env.example` to `.env` and set `ConnectionStrings__DefaultConnection` (Supabase/Postgres).
+4. Open a terminal in the project folder.
+5. Restore and build:
 
 ```powershell
 dotnet restore
 dotnet build
 ```
 
-5. Run the app:
+6. Run the app:
 
 ```powershell
 dotnet run
 ```
 
-6. Open the localhost URL shown in the terminal.
+7. Open the localhost URL shown in the terminal.
 
 ## Source Repository
 
@@ -64,9 +66,11 @@ GitHub remote:
 https://github.com/K-Marple/recipe-suggestions.git
 ```
 
+Task tracking: Jira project **RS** (team board).
+
 ## Database and Migrations
 
-The app uses SQLite through Entity Framework Core. The default connection string is configured in `appsettings.json`.
+The app uses PostgreSQL (Supabase) through Entity Framework Core. The connection string is loaded from `.env` as `ConnectionStrings__DefaultConnection` (see `.env.example`). Do not put secrets in `appsettings.json`.
 
 Create a migration after model changes:
 
@@ -86,24 +90,42 @@ If `dotnet ef` is not available, install the EF Core CLI tool:
 dotnet tool install --global dotnet-ef
 ```
 
-## How to Use
+## How to Use (user guide)
 
-1. Register for an account or log in.
-2. Go to Ingredients.
-3. Search existing ingredients or add custom ingredients.
-4. Select up to 15 ingredients.
-5. Click Find Recipes.
-6. Open a recipe card to view details.
-7. Save recipes while logged in.
-8. Favorite, unfavorite, or remove recipes from Saved Recipes.
-9. View account stats on the Profile page.
+### Quick start (guest)
+
+1. Open [ScrapeThePantry](https://scrapethepantry.onrender.com/) (or your local URL).
+2. Go to **My Pantry**.
+3. Search and select ingredients you have (guest mode is temporary until you log in).
+4. Click **Find Recipes**.
+5. Open a recipe to see details, approximated times, and which ingredients you already have.
+
+### Account
+
+1. Click **Log in / Sign up** (or **Account**).
+2. Create an account with a **username**, email, and password.
+3. After login, guest pantry selections merge into your saved pantry.
+4. Use **Account** to change username/email/password or delete the account.
+5. The top bar shows **Hello, {username}** (click to open Account).
+
+### Saved recipes
+
+1. While logged in, save or favorite recipes from results or details.
+2. Open **Saved Recipes** to browse all saved items or the Favorites tab.
+3. Unsave or unfavorite from that page.
+
+### Tips
+
+- Green chips on recipe cards are ingredients you have; they appear first.
+- If no recipes match your pantry, the app shows a short note and lets you browse other recipes.
+- Custom ingredients require an account.
 
 ## CRUD Explanation
 
 - Create: users add custom ingredients and save MealDB recipes.
 - Read: users view ingredient lists, recipe results, recipe details, saved recipes, and profile stats.
-- Update: users edit custom ingredient names and toggle recipe favorite status.
-- Delete: users delete custom ingredients and remove saved recipes.
+- Update: users change account username/email/password and toggle recipe favorite status.
+- Delete: users delete custom ingredients, remove saved recipes, and can delete their account.
 
 Default seeded ingredients are read-only so the shared pantry list remains stable.
 
@@ -113,8 +135,18 @@ ScrapeThePantry uses TheMealDB public API:
 
 - `filter.php?i=ingredient_name` searches meals by one ingredient.
 - `lookup.php?i=meal_id` loads full recipe details.
+- `search.php?s=` supports browse when no pantry match is available.
 
-The recipe results page searches each selected ingredient separately, merges duplicate meals by MealDB id, counts matches, and displays the matched ingredient chips. API failures are handled safely so the app shows friendly empty/error states instead of crashing.
+The recipe results page searches each selected ingredient separately (capped), merges duplicate meals by MealDB id, ranks by pantry overlap, and shows have/buy chips. API failures are handled safely so the app shows friendly empty/error states instead of crashing.
+
+## Performance
+
+The app is designed to limit unnecessary network work:
+
+- **MealDB caching** — ingredient filters, browse lists, and meal details are cached in memory (~30 minutes).
+- **Batched hydration** — recipe cards load a small first page, then more on demand (Load More).
+- **Catalog cache / background sync** — pantry ingredients are seeded and synced without re-fetching MealDB on every page view.
+- **Parallel capped search** — multi-ingredient search runs a limited number of filter calls in parallel and merges results.
 
 ## Accessibility Notes
 
@@ -123,16 +155,29 @@ The recipe results page searches each selected ingredient separately, merges dup
 - Validation and status messages use alert regions.
 - Form controls include labels or accessible labels.
 - Layout is responsive for desktop and mobile use.
+- Have vs need uses icons/text in addition to color.
 
 ## Testing Checklist
 
-See `TESTING.md` for the full manual QA checklist. At minimum, verify registration, login, ingredient CRUD, recipe search, recipe details, saved recipe actions, profile stats, mobile layout, and accessibility/Lighthouse checks.
+See `QA_RESULTS.md` for the recorded QA evidence: build checks, functional smoke tests, Lighthouse scores, accessibility notes, responsive checks, performance notes, and repository links.
 
-See `QA_RESULTS.md` for recorded build, responsive smoke-test, accessibility smoke-test, and repository evidence.
+## Code comments (for maintainers)
+
+Non-obvious logic is commented in:
+
+- `Services/MealDbService.cs` — API + cache behavior
+- `Services/IngredientMatcher.cs` — fuzzy match rules
+- `Services/RecipeMatchAnalyzer.cs` — have/buy / ranking stats
+- `Services/GuestPantrySession.cs` — guest → login pantry merge
+- `Services/RecipeTimeEstimator.cs` — approximate times
+- `Services/CatalogSyncHostedService.cs` — startup catalog sync
+- `Program.cs` — env secrets + Identity setup
+
+UI pages (`Components/Pages/*.razor`) stay light on comments; business rules live in services.
 
 ## Deployment Notes
 
-- Configure a production SQLite path or managed database connection string.
+- Configure a production database connection string via environment secrets (do not commit `.env`).
 - Run EF migrations during deployment.
 - Keep Identity files and authentication endpoints enabled.
 - Ensure outbound HTTPS access to `https://www.themealdb.com`.
@@ -140,7 +185,7 @@ See `QA_RESULTS.md` for recorded build, responsive smoke-test, accessibility smo
 - Set environment-specific connection strings in deployment secrets or app settings.
 - Run `dotnet build` before publishing.
 
-Deployment status: add the final cloud deployment URL here after publishing.
+**Live deployment:** [https://scrapethepantry.onrender.com/](https://scrapethepantry.onrender.com/)
 
 Publish example:
 
